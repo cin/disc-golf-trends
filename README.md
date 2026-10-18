@@ -29,6 +29,7 @@ copy .env.example .env                     # then edit it
 |---|---|
 | `UDISC_CSV_DIR` | Folder holding your export(s) |
 | `UDISC_PLAYER` | Your name exactly as in the `PlayerName` column |
+| `TECHDISC_CSV_DIR` | Optional. Folder holding a TechDisc throw export; may be the same folder as `UDISC_CSV_DIR` (files are told apart by header). Without it the TechDisc tools report the missing setting |
 | `MIN_HOLE_ROUNDS` | Optional. Rounds a hole needs before `hole_problem_report` ranks it (default 3) |
 
 The `.env` file is git-ignored. It holds only paths and a name, no secrets. On Linux/macOS the server refuses to
@@ -67,6 +68,10 @@ Claude Desktop (`claude_desktop_config.json`):
 | `scoring_trends` | Score vs par by month or season, optionally per course |
 | `hole_problem_report` | Holes that cost the most strokes over par, with blow-up counts |
 | `compare_seasons` | Two calendar years side by side |
+| `throw_export_status` | TechDisc: throw count, first/last throw, export age, stale warning |
+| `list_throws` | TechDisc: throws by date range, Backhand/Forehand and Hyzer/Flat, newest first |
+| `throw_stats` | TechDisc: speed, distance, spin and angle averages/maxima, overall and by throw style |
+| `throw_trends` | TechDisc: those numbers by month or season |
 
 Example questions: "Which holes at Gatewood cost me the most strokes?", "How has my scoring trended each season?",
 "Compare 2025 and 2026."
@@ -78,7 +83,11 @@ Example questions: "Which holes at Gatewood cost me the most strokes?", "How has
   averages and trends.
 - Totals are the sum of the hole scores; the file's `Total` column is ignored because it can disagree with them.
 - Hole numbers are only compared within one course layout.
-- The export has no throws, putts or penalty columns, so none are reported.
+- The UDisc export has no throws, putts or penalty columns, so none are reported.
+- TechDisc throws are practice data and are not linked to rounds (the export has no course or round column).
+  Throw times come from `timeSeconds` and are shown in this computer's local time zone.
+- When both exports share a folder, each loader ignores the other's files by header, and `export_status` only
+  looks at scorecard files.
 
 ## Development
 
