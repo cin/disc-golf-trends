@@ -124,6 +124,31 @@ def test_course_stats_ignores_partial_round_for_averages(alex):
     assert ud.course_stats(alex, "Nowhere") is None
 
 
+def test_course_stats_lists_every_hole_only_on_request(alex):
+    brief = ud.course_stats(alex, "Pine Hollow")
+    assert "holes" not in brief
+    assert brief["best_holes"] and brief["worst_holes"]
+    full = ud.course_stats(alex, "Pine Hollow", include_holes=True)
+    assert len(full["holes"]) >= len(full["best_holes"])
+
+
+def test_scoring_distribution_counts_every_scored_hole(alex):
+    (row,) = ud.scoring_distribution(alex)
+    expected = sum(len(r.played) for r in alex)
+    assert row["period"] == "all"
+    assert row["holes"] == expected == sum(row["counts"].values())
+    assert round(sum(row["percent"].values())) == 100
+    by_season = ud.scoring_distribution(alex, group_by="season")
+    assert [s["period"] for s in by_season] == ["2025", "2026"]
+    assert sum(s["holes"] for s in by_season) == expected
+    assert ud.scoring_distribution(alex, course="Nowhere") == []
+
+
+def test_score_kind_boundaries():
+    kinds = [ud._score_kind(o) for o in (-3, -2, -1, 0, 1, 2, 3, 5)]
+    assert kinds == ["eagle_or_better"] * 2 + ["birdie", "par", "bogey", "double", "triple_or_worse", "triple_or_worse"]
+
+
 def test_hole_stats_are_keyed_by_layout(alex):
     holes = ud.hole_stats(alex)
     assert {(h["course"], h["layout"]) for h in holes} == {("Pine Hollow", "Main"), ("Oak Ridge", "Short")}
@@ -219,6 +244,7 @@ def test_all_tools_registered_read_only():
         "list_courses",
         "course_stats",
         "scoring_trends",
+        "scoring_distribution",
         "hole_problem_report",
         "compare_seasons",
         "throw_export_status",

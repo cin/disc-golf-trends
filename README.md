@@ -66,8 +66,9 @@ Claude Desktop (`claude_desktop_config.json`):
 | `list_rounds` | Rounds by date range and course, newest first |
 | `get_round` | Hole-by-hole scores vs par for one round |
 | `list_courses` | Courses, layouts, rounds played, first/last played |
-| `course_stats` | Average/best/worst rounds, per-layout and per-hole averages |
+| `course_stats` | Average/best/worst rounds, per-layout stats, 3 best and worst holes; `include_holes` adds every hole |
 | `scoring_trends` | Score vs par by month or season, optionally per course |
+| `scoring_distribution` | Share of holes at eagle or better, birdie, par, bogey, double, triple or worse; overall, by month or by season |
 | `hole_problem_report` | Holes that cost the most strokes over par, with blow-up counts (a blow-up is a double bogey or worse) |
 | `compare_seasons` | Two calendar years side by side |
 | `throw_export_status` | TechDisc: throw count, first/last throw, export age, stale warning |

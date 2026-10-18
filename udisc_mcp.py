@@ -128,10 +128,26 @@ def list_courses() -> list[dict]:
 
 
 @mcp.tool(annotations=READ_ONLY)
-def course_stats(course: str, layout: str | None = None) -> dict:
-    """Average, best and worst rounds, per-layout stats and per-hole averages for a course (substring match)."""
-    out = ud.course_stats(rounds(), course, layout)
+def course_stats(course: str, layout: str | None = None, include_holes: bool = False) -> dict:
+    """Average, best and worst rounds, per-layout stats and the 3 best and worst holes for a course (substring match).
+
+    include_holes adds the average for every hole; that list is long for multi-layout courses."""
+    out = ud.course_stats(rounds(), course, layout, include_holes=include_holes)
     return out or {"error": f"no rounds at a course matching {course!r}"}
+
+
+@mcp.tool(annotations=READ_ONLY)
+def scoring_distribution(
+    course: str | None = None,
+    layout: str | None = None,
+    start: str | None = None,
+    end: str | None = None,
+    group_by: str | None = None,
+) -> list[dict]:
+    """Share of holes scored eagle or better, birdie, par, bogey, double and triple or worse.
+
+    start/end are YYYY-MM-DD (inclusive). group_by is omitted for one overall row, or 'month' or 'season'."""
+    return ud.scoring_distribution(rounds(), course=course, layout=layout, start=start, end=end, group_by=group_by)
 
 
 @mcp.tool(annotations=READ_ONLY)

@@ -301,7 +301,8 @@ def hole_stats(rounds, min_rounds=1):
     return out
 
 
-def course_stats(rounds, course, layout=None):
+def course_stats(rounds, course, layout=None, include_holes=False):
+    """Round stats for a course. The full per-hole list is large, so it is only added on request."""
     rs = filter_rounds(rounds, course=course, layout=layout)
     if not rs:
         return None
@@ -316,7 +317,8 @@ def course_stats(rounds, course, layout=None):
     scored = [h for h in holes if h["rounds"] >= 2]
     out["best_holes"] = sorted(scored, key=lambda h: h["avg_to_par"])[:3]
     out["worst_holes"] = sorted(scored, key=lambda h: -h["avg_to_par"])[:3]
-    out["holes"] = holes
+    if include_holes:
+        out["holes"] = holes
     return out
 
 
@@ -353,6 +355,44 @@ def scoring_trends(rounds, course=None, layout=None, group_by="month"):
                     "layout": best.layout,
                 },
                 "avg_rating": round(mean(ratings)) if ratings else None,
+            }
+        )
+    return out
+
+
+SCORE_KINDS = ("eagle_or_better", "birdie", "par", "bogey", "double", "triple_or_worse")
+
+
+def _score_kind(over):
+    if over <= -2:
+        return "eagle_or_better"
+    if over >= 3:
+        return "triple_or_worse"
+    return SCORE_KINDS[over + 2]
+
+
+def scoring_distribution(rounds, course=None, layout=None, start=None, end=None, group_by=None):
+    """How holes were scored relative to par, as counts and percentages of holes played.
+
+    Counts every scored hole with a known par, including holes from partial rounds. group_by is None (one row),
+    'month' or 'season'.
+    """
+    buckets = defaultdict(lambda: dict.fromkeys(SCORE_KINDS, 0))
+    for r in filter_rounds(rounds, start=start, end=end, course=course, layout=layout):
+        period = "all" if group_by is None else _bucket(r, group_by)
+        for p, s in zip(r.pars, r.scores, strict=True):
+            if s is not None and p is not None:
+                buckets[period][_score_kind(s - p)] += 1
+    out = []
+    for period in sorted(buckets):
+        counts = buckets[period]
+        holes = sum(counts.values())
+        out.append(
+            {
+                "period": period,
+                "holes": holes,
+                "counts": counts,
+                "percent": {k: round(100 * v / holes, 1) for k, v in counts.items()},
             }
         )
     return out
