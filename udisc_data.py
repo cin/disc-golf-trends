@@ -106,17 +106,29 @@ def read_csv_rows(path):
             yield row, cols
 
 
+def is_scorecard_export(path):
+    with Path(path).open(newline="", encoding="utf-8-sig") as f:
+        header = next(csv.reader(f), [])
+    return "PlayerName" in header and "StartDate" in header
+
+
+def scorecard_files(csv_dir):
+    """The UDisc scorecard exports in csv_dir. Other CSVs (e.g. a TechDisc throw export) are ignored by header."""
+    directory = Path(csv_dir)
+    if not directory.is_dir():
+        raise FileNotFoundError(f"UDISC_CSV_DIR is not a folder: {directory}")
+    files = [p for p in sorted(directory.glob("*.csv")) if is_scorecard_export(p)]
+    if not files:
+        raise FileNotFoundError(f"No UDisc scorecard CSVs in {directory}")
+    return files
+
+
 def load_rounds(csv_dir, player=None):
     """Load every *.csv under csv_dir. Returns rounds sorted by start time (oldest first).
 
     Rounds are de-duplicated on (player, course, layout, start), so overlapping exports are harmless.
     If `player` is given (case-insensitive), only that player's rounds are returned."""
-    directory = Path(csv_dir)
-    if not directory.is_dir():
-        raise FileNotFoundError(f"UDISC_CSV_DIR is not a folder: {directory}")
-    files = sorted(directory.glob("*.csv"))
-    if not files:
-        raise FileNotFoundError(f"No .csv files in {directory}")
+    files = scorecard_files(csv_dir)
     par_rows = {}
     player_rows = {}
     for path in files:
@@ -156,8 +168,7 @@ def load_rounds(csv_dir, player=None):
 
 def latest_export_mtime(csv_dir):
     """Newest modification time among the CSVs, as an aware datetime (local zone)."""
-    files = sorted(Path(csv_dir).glob("*.csv"))
-    return max((datetime.fromtimestamp(p.stat().st_mtime).astimezone() for p in files), default=None)
+    return max(datetime.fromtimestamp(p.stat().st_mtime).astimezone() for p in scorecard_files(csv_dir))
 
 
 # ---------- queries ----------

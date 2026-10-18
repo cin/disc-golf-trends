@@ -212,5 +212,9 @@ def test_all_tools_registered_read_only():
         "scoring_trends",
         "hole_problem_report",
         "compare_seasons",
+        "throw_export_status",
+        "list_throws",
+        "throw_stats",
+        "throw_trends",
     }
     assert all(t.annotations and t.annotations.read_only_hint for t in tools)
