@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Disc Golf Trends</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface-1: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --deemph: #c3c2b7;
+  --neutral: #f0efec;
+  --pole-under: #2a78d6;
+  --pole-over: #e34948;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface-1: #1a1a19;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --deemph: #4d4c48;
+    --neutral: #383835;
+    --pole-under: #3987e5;
+    --pole-over: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface-1: #1a1a19;
+  --text-primary: #f0efec;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --deemph: #4d4c48;
+  --neutral: #383835;
+  --pole-under: #3987e5;
+  --pole-over: #e66767;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text-primary);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+.sub { color: var(--text-secondary); margin: 0 0 20px; font-size: 14px; }
+.filters {
+  display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center;
+  padding: 12px 0; margin-bottom: 8px;
+  border-bottom: 1px solid var(--grid);
+}
+.filters label { color: var(--text-secondary); font-size: 13px; margin-right: 6px; }
+select, button {
+  font: inherit; color: var(--text-primary); background: var(--surface-1);
+  border: 1px solid var(--axis); border-radius: 8px; padding: 6px 10px; cursor: pointer;
+}
+button:hover, select:hover { background: var(--neutral); }
+.seg { display: inline-flex; gap: 0; }
+.seg button { border-radius: 0; margin-left: -1px; }
+.seg button:first-child { border-radius: 8px 0 0 8px; margin-left: 0; }
+.seg button:last-child { border-radius: 0 8px 8px 0; }
+.seg button[aria-pressed="true"] { background: var(--text-primary); color: var(--surface-1); border-color: var(--text-primary); }
+.tabs { display: flex; gap: 4px; margin: 16px 0; }
+.tabs button { border: 0; background: transparent; border-bottom: 2px solid transparent; border-radius: 0; padding: 8px 14px; color: var(--text-secondary); }
+.tabs button[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--series-1); font-weight: 600; }
+.tabs button:hover { background: transparent; color: var(--text-primary); }
+.kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } .tile.hero { grid-column: span 2; } }
+.tile, .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.tile.hero { grid-column: span 2; }
+.tile .label { color: var(--text-secondary); font-size: 13px; }
+.tile .value { font-size: 28px; font-weight: 600; margin: 2px 0; }
+.tile.hero .value { font-size: 52px; line-height: 1.1; }
+.tile .note { color: var(--text-secondary); font-size: 13px; }
+.card { margin-bottom: 16px; }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.card h2 { font-size: 16px; font-weight: 600; margin: 0; }
+.card .card-sub { color: var(--text-secondary); font-size: 13px; margin: 2px 0 0; }
+.card-tools { display: flex; gap: 8px; align-items: center; }
+.card-tools button { padding: 3px 9px; font-size: 13px; }
+.chart { width: 100%; position: relative; }
+svg { display: block; max-width: 100%; }
+.tick { fill: var(--text-muted); font-size: 11px; }
+.axis-title { fill: var(--text-muted); font-size: 11px; }
+.endlabel { fill: var(--text-secondary); font-size: 12px; font-weight: 600; }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.baseline { stroke: var(--axis); stroke-width: 1; }
+.cross { stroke: var(--axis); stroke-width: 1; }
+.line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.s1 { stroke: var(--series-1); }
+.dot { stroke: var(--surface-1); stroke-width: 2; }
+.f1 { fill: var(--series-1); }
+.f2 { fill: var(--series-2); }
+.fgray { fill: var(--deemph); }
+.hit { fill: transparent; }
+.bar.hot { stroke: var(--text-primary); stroke-width: 1.5; }
+.cell-text { font-size: 11px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0 8px; font-size: 13px; color: var(--text-secondary); }
+.legend i { display: inline-block; width: 14px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--grid); }
+th { color: var(--text-secondary); font-weight: 600; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.table-wrap { overflow-x: auto; }
+.empty { color: var(--text-secondary); padding: 24px 0; }
+#tip {
+  position: fixed; z-index: 10; pointer-events: none; display: none; min-width: 140px; max-width: 280px;
+  background: var(--surface-1); border: 1px solid var(--axis); border-radius: 8px; padding: 8px 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); font-size: 13px;
+}
+#tip .t { color: var(--text-secondary); margin-bottom: 4px; }
+#tip .r { display: flex; justify-content: space-between; gap: 12px; }
+#tip .r b { font-weight: 600; }
+#tip .r span { color: var(--text-secondary); }
+#err { color: #d03b3b; font-size: 13px; white-space: pre-wrap; }
+@media (max-width: 600px) { .tile.hero .value { font-size: 44px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Disc golf trends</h1>
+  <p class="sub" id="subtitle"></p>
+  <div id="err"></div>
+  <div class="filters" id="filters"></div>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div id="view"></div>
+</main>
+<div id="tip" role="tooltip"></div>
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(() => {
+'use strict';
+
+const D = JSON.parse(document.getElementById('data').textContent);
+const NS = 'http://www.w3.org/2000/svg';
+const DAY = 86400000;
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MINUS = '−';
+
+// ---------- DOM helpers (all text goes in via textContent / text nodes) ----------
+
+function setAttrs(e, attrs) {
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null) continue;
+    if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v);
+  }
+}
+function add(e, kids) {
+  for (const k of kids.flat()) if (k != null && k !== false) e.append(k.nodeType ? k : document.createTextNode(String(k)));
+  return e;
+}
+const h = (tag, attrs, ...kids) => add((() => { const e = document.createElement(tag); setAttrs(e, attrs); return e; })(), kids);
+const sv = (tag, attrs, ...kids) => add((() => { const e = document.createElementNS(NS, tag); setAttrs(e, attrs); return e; })(), kids);
+
+// ---------- formatting ----------
+
+const fmtN = (v, d = 1) => (v == null ? '–' : v.toFixed(d));
+function fmtPar(v, d = 1) {
+  if (v == null) return '–';
+  const r = Number(v.toFixed(d));
+  return (r > 0 ? '+' : r < 0 ? MINUS : '') + Math.abs(r).toFixed(d);
+}
+const fmtInt = v => (v == null ? '–' : String(Math.round(v)));
+function fmtDate(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${MONTHS[m - 1]} ${d}, ${y}`;
+}
+const mean = xs => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+
+// ---------- dates and filters ----------
+
+const parseDay = s => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+const anchor = D.through ? parseDay(D.through) : Date.now();
+const anchorYear = new Date(anchor).getUTCFullYear();
+
+const RANGES = [
+  { id: 'all', label: 'All time' },
+  { id: '12m', label: 'Last 12 months' },
+  { id: '90d', label: 'Last 90 days' },
+  { id: 'ytd', label: String(anchorYear) },
+];
+function windowFor(id) {
+  if (id === '12m') return { from: anchor - 365 * DAY, to: anchor };
+  if (id === '90d') return { from: anchor - 90 * DAY, to: anchor };
+  if (id === 'ytd') return { from: Date.UTC(anchorYear, 0, 1) - DAY, to: anchor };
+  return { from: -Infinity, to: Infinity };
+}
+function priorWindow(id) {
+  if (id === '12m') return { from: anchor - 730 * DAY, to: anchor - 365 * DAY };
+  if (id === '90d') return { from: anchor - 180 * DAY, to: anchor - 90 * DAY };
+  return null;
+}
+const inWin = (iso, w) => { const t = parseDay(iso); return t > w.from && t <= w.to; };
+
+const hashTab = location.hash.slice(1);
+const params = new URLSearchParams(location.search);
+if (params.get('theme') === 'dark' || params.get('theme') === 'light') document.documentElement.dataset.theme = params.get('theme');
+
+const state = {
+  tab: ['scoring', 'holes', 'throws'].includes(hashTab) ? hashTab : 'scoring',
+  course: params.get('course') || (D.courses[0] ? D.courses[0].key : 'all'),
+  range: params.get('range') || 'all',
+  grain: 'month',
+  holeMetric: 'total',
+  tables: new Set(),
+};
+const courseKey = r => r.c + '|' + r.l;
+function roundsSlice(win, key) {
+  return D.rounds.filter(r => inWin(r.d, win) && (key === 'all' || courseKey(r) === key));
+}
+const complete = rs => rs.filter(r => r.f);
+
+// ---------- tooltip ----------
+
+const tipEl = document.getElementById('tip');
+const tip = {
+  show(title, rows, x, y) {
+    tipEl.replaceChildren(
+      h('div', { class: 't' }, title),
+      ...rows.map(([label, value]) => h('div', { class: 'r' }, h('span', null, label), h('b', null, value)))
+    );
+    tipEl.style.display = 'block';
+    const w = tipEl.offsetWidth, hgt = tipEl.offsetHeight;
+    let left = x + 14, top = y + 14;
+    if (left + w > window.innerWidth - 8) left = x - w - 14;
+    if (top + hgt > window.innerHeight - 8) top = y - hgt - 14;
+    tipEl.style.left = Math.max(8, left) + 'px';
+    tipEl.style.top = Math.max(8, top) + 'px';
+  },
+  hide() { tipEl.style.display = 'none'; },
+};
+function focusPoint(target) { const r = target.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }
+
+// ---------- scales ----------
+
+function niceTicks(lo, hi, n = 5) {
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const raw = (hi - lo) / n;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw);
+  const t0 = Math.floor(lo / step + 1e-9) * step, t1 = Math.ceil(hi / step - 1e-9) * step;
+  const out = [];
+  for (let v = t0; v <= t1 + step / 2; v += step) out.push(Number(v.toFixed(10)));
+  return out;
+}
+const compact = v => (Math.abs(v) >= 1000 ? (v / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : String(v));
+function axisFmt(v, signed) {
+  const base = Number.isInteger(v) ? compact(v) : v.toFixed(1);
+  return signed && v > 0 ? '+' + base : v < 0 ? MINUS + base.replace('-', '') : base;
+}
+
+function frame(el, o) {
+  const W = Math.max(280, el.clientWidth || 600), H = o.height || 280;
+  const m = { l: 48, r: o.marginRight ?? 56, t: 14, b: o.marginBottom ?? 30 };
+  const svgEl = sv('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'aria-label': o.aria });
+  return { W, H, m, svgEl, pw: W - m.l - m.r, ph: H - m.t - m.b };
+}
+function yScale(f, ticks) {
+  const t0 = ticks[0], t1 = ticks[ticks.length - 1];
+  return v => f.m.t + (1 - (v - t0) / (t1 - t0)) * f.ph;
+}
+function drawYAxis(f, ticks, y, signed, title) {
+  for (const t of ticks) {
+    f.svgEl.append(sv('line', { class: t === 0 && signed ? 'baseline' : 'gridline', x1: f.m.l, x2: f.W - f.m.r, y1: y(t), y2: y(t) }));
+    f.svgEl.append(sv('text', { class: 'tick', x: f.m.l - 8, y: y(t), 'text-anchor': 'end', 'dominant-baseline': 'central' }, axisFmt(t, signed)));
+  }
+  if (title) f.svgEl.append(sv('text', { class: 'axis-title', x: f.m.l, y: 10 }, title));
+}
+
+// ---------- line chart (one series, crosshair + tooltip) ----------
+
+function lineChart(el, o) {
+  const f = frame(el, o);
+  const n = o.points.length;
+  const vals = o.points.map(p => p.y).filter(v => v != null);
+  if (!vals.length) { el.append(h('div', { class: 'empty' }, 'No data for this selection.')); return; }
+  const lo = Math.min(...vals, o.zero ? 0 : Infinity), hi = Math.max(...vals, o.zero ? 0 : -Infinity);
+  const ticks = niceTicks(lo, hi);
+  const y = yScale(f, ticks);
+  const x = i => f.m.l + (n <= 1 ? f.pw / 2 : (i * f.pw) / (n - 1));
+  drawYAxis(f, ticks, y, o.zero, o.yTitle);
+  for (const t of o.xTicks) f.svgEl.append(sv('text', { class: 'tick', x: x(t.i), y: f.H - 10, 'text-anchor': 'middle' }, t.label));
+
+  let seg = [];
+  const flush = () => {
+    if (seg.length > 1) f.svgEl.append(sv('path', { class: 'line s1', d: seg.map((p, k) => (k ? 'L' : 'M') + x(p.i) + ' ' + y(p.y)).join(' ') }));
+    seg = [];
+  };
+  o.points.forEach((p, i) => { if (p.y == null) flush(); else seg.push({ i, y: p.y }); });
+  flush();
+
+  const cross = sv('line', { class: 'cross', y1: f.m.t, y2: f.H - f.m.b, style: 'display:none' });
+  f.svgEl.append(cross);
+  const markers = [];
+  const showAt = (i, cx, cy) => {
+    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.style.display = '';
+    tip.show(o.points[i].title, o.points[i].rows, cx, cy);
+  };
+  o.points.forEach((p, i) => {
+    if (p.y == null) return;
+    const dot = sv('circle', {
+      class: 'dot f1', cx: x(i), cy: y(p.y), r: 4, tabindex: 0,
+      'aria-label': `${p.title}: ${o.fmt(p.y)}`,
+      onfocus: ev => { const [cx, cy] = focusPoint(ev.target); showAt(i, cx, cy); },
+      onblur: () => { tip.hide(); cross.style.display = 'none'; },
+    });
+    markers.push({ i, dot });
+    f.svgEl.append(dot);
+  });
+  const last = markers[markers.length - 1];
+  if (last) f.svgEl.append(sv('text', { class: 'endlabel', x: x(last.i) + 10, y: y(o.points[last.i].y), 'dominant-baseline': 'central' }, o.fmt(o.points[last.i].y)));
+
+  const hit = sv('rect', { class: 'hit', x: f.m.l - 8, y: f.m.t, width: f.pw + 16, height: f.ph });
+  hit.addEventListener('pointermove', ev => {
+    const box = hit.getBoundingClientRect();
+    const px = ev.clientX - box.left - 8;
+    let best = markers[0], bd = Infinity;
+    for (const mk of markers) { const d = Math.abs(x(mk.i) - f.m.l - px); if (d < bd) { bd = d; best = mk; } }
+    if (best) showAt(best.i, ev.clientX, ev.clientY);
+  });
+  hit.addEventListener('pointerleave', () => { tip.hide(); cross.style.display = 'none'; });
+  f.svgEl.append(hit);
+  el.append(f.svgEl);
+}
+
+// ---------- column chart (single or grouped series) ----------
+
+function barPath(x, w, base, end, r) {
+  const hgt = Math.abs(end - base);
+  if (hgt < 1) return `M${x} ${base - 0.5}h${w}v1h${-w}Z`;
+  const rr = Math.min(r, hgt, w / 2);
+  return end < base
+    ? `M${x} ${base}V${end + rr}Q${x} ${end} ${x + rr} ${end}H${x + w - rr}Q${x + w} ${end} ${x + w} ${end + rr}V${base}Z`
+    : `M${x} ${base}V${end - rr}Q${x} ${end} ${x + rr} ${end}H${x + w - rr}Q${x + w} ${end} ${x + w} ${end - rr}V${base}Z`;
+}
+
+function columnChart(el, o) {
+  const f = frame(el, { ...o, marginRight: 16 });
+  const nSeries = o.series.length;
+  const vals = o.cats.flatMap(c => c.vals).filter(v => v != null);
+  if (!vals.length) { el.append(h('div', { class: 'empty' }, 'No data for this selection.')); return; }
+  const ticks = niceTicks(Math.min(0, ...vals), Math.max(0, ...vals));
+  const y = yScale(f, ticks);
+  drawYAxis(f, ticks, y, o.signed, o.yTitle);
+  const slot = f.pw / o.cats.length;
+  const barW = Math.max(3, Math.min(24, (slot - 6) / nSeries - 2));
+  const groupW = nSeries * barW + (nSeries - 1) * 2;
+  const labelEvery = Math.ceil(o.cats.length / Math.max(1, Math.floor(f.pw / 34)));
+  o.cats.forEach((c, ci) => {
+    const cx = f.m.l + slot * ci + slot / 2;
+    const bars = [];
+    c.vals.forEach((v, si) => {
+      if (v == null) return;
+      const bx = cx - groupW / 2 + si * (barW + 2);
+      const cls = o.colorFor ? o.colorFor(c, ci, si) : 'f' + (si + 1);
+      const b = sv('path', { class: `bar ${cls}`, d: barPath(bx, barW, y(0), y(v), 4) });
+      bars.push(b);
+      f.svgEl.append(b);
+      if (o.labelFor && o.labelFor(c, ci, si)) {
+        const above = v >= 0;
+        f.svgEl.append(sv('text', { class: 'endlabel', x: bx + barW / 2, y: above ? y(v) - 7 : y(v) + 12, 'text-anchor': 'middle' }, o.fmt(v)));
+      }
+    });
+    if (ci % labelEvery === 0) f.svgEl.append(sv('text', { class: 'tick', x: cx, y: f.H - 10, 'text-anchor': 'middle' }, c.label));
+    const show = (px, py) => { bars.forEach(b => b.classList.add('hot')); tip.show(c.title || c.label, c.rows, px, py); };
+    const hide = () => { bars.forEach(b => b.classList.remove('hot')); tip.hide(); };
+    f.svgEl.append(sv('rect', {
+      class: 'hit', x: cx - slot / 2, y: f.m.t, width: slot, height: f.ph, tabindex: 0,
+      'aria-label': `${c.title || c.label}: ${c.rows.map(r => r.join(' ')).join(', ')}`,
+      onpointermove: ev => show(ev.clientX, ev.clientY),
+      onpointerleave: hide,
+      onfocus: ev => { const [px, py] = focusPoint(ev.target); show(px, py); },
+      onblur: hide,
+    }));
+  });
+  if (nSeries > 1) {
+    el.append(h('div', { class: 'legend' }, o.series.map((s, i) => h('span', null, h('i', { class: 'f' + (i + 1), style: `background:var(--series-${i + 1})` }), s.name))));
+  }
+  el.append(f.svgEl);
+}
+
+// ---------- heatmap (diverging around par) ----------
+
+function hex(c) { c = c.trim(); return [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)); }
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function mix(a, b, t) { return a.map((v, i) => Math.round(v + (b[i] - v) * t)); }
+function divergingColor(v, scale) {
+  const neutral = hex(cssVar('--neutral'));
+  const pole = hex(cssVar(v < 0 ? '--pole-under' : '--pole-over'));
+  const t = Math.min(1, Math.abs(v) / scale);
+  const steps = Math.ceil(t * 4) / 4; // four discrete steps per arm
+  return mix(neutral, pole, steps);
+}
+const luminance = ([r, g, b]) => (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+function heatmap(el, o) {
+  const labelW = 44, top = 24, cellH = 26;
+  const W = Math.max(280, el.clientWidth || 600);
+  const cellW = Math.min(88, (W - labelW) / o.cols.length);
+  const H = top + o.rows.length * cellH + 40;
+  const svgEl = sv('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'aria-label': o.aria });
+  o.cols.forEach((c, ci) => svgEl.append(sv('text', { class: 'tick', x: labelW + ci * cellW + cellW / 2, y: 14, 'text-anchor': 'middle' }, c)));
+  o.rows.forEach((r, ri) => {
+    svgEl.append(sv('text', { class: 'tick', x: labelW - 8, y: top + ri * cellH + cellH / 2, 'text-anchor': 'end', 'dominant-baseline': 'central' }, r));
+    o.cols.forEach((c, ci) => {
+      const cell = o.cells[ri][ci];
+      const x = labelW + ci * cellW, y = top + ri * cellH;
+      if (!cell) { svgEl.append(sv('rect', { x: x + 1, y: y + 1, width: cellW - 2, height: cellH - 2, rx: 3, style: 'fill:var(--grid)', opacity: 0.4 })); return; }
+      const rgb = divergingColor(cell.v, o.scale);
+      const bg = `rgb(${rgb.join(',')})`;
+      const rect = sv('rect', {
+        class: 'bar', x: x + 1, y: y + 1, width: cellW - 2, height: cellH - 2, rx: 3, style: `fill:${bg}`, tabindex: 0,
+        'aria-label': `${o.rowLabel} ${r}, ${c}: ${fmtPar(cell.v, 2)}`,
+      });
+      const show = (px, py) => { rect.classList.add('hot'); tip.show(`${o.rowLabel} ${r} · ${c}`, cell.rows, px, py); };
+      const hide = () => { rect.classList.remove('hot'); tip.hide(); };
+      rect.addEventListener('pointermove', ev => show(ev.clientX, ev.clientY));
+      rect.addEventListener('pointerleave', hide);
+      rect.addEventListener('focus', ev => { const [px, py] = focusPoint(ev.target); show(px, py); });
+      rect.addEventListener('blur', hide);
+      svgEl.append(rect);
+      svgEl.append(sv('text', { class: 'cell-text', x: x + cellW / 2, y: y + cellH / 2, style: `fill:${luminance(rgb) > 0.55 ? '#0b0b0b' : '#ffffff'}` }, fmtPar(cell.v, 2)));
+    });
+  });
+  // scale legend: -scale ... par ... +scale
+  const ly = top + o.rows.length * cellH + 14, steps = 9, sw = 26;
+  const x0 = labelW;
+  for (let i = 0; i < steps; i++) {
+    const v = ((i - (steps - 1) / 2) / ((steps - 1) / 2)) * o.scale;
+    const rgb = divergingColor(v, o.scale);
+    svgEl.append(sv('rect', { x: x0 + i * sw, y: ly, width: sw - 2, height: 10, rx: 2, style: `fill:rgb(${rgb.join(',')})` }));
+  }
+  svgEl.append(sv('text', { class: 'tick', x: x0, y: ly + 24 }, MINUS + o.scale.toFixed(1) + ' under par'));
+  svgEl.append(sv('text', { class: 'tick', x: x0 + steps * sw, y: ly + 24, 'text-anchor': 'end' }, o.scale.toFixed(1) + ' over par'));
+  el.append(svgEl);
+}
+
+// ---------- cards, tables, tiles ----------
+
+function makeTable(head, rows, numFrom = 1) {
+  return h('div', { class: 'table-wrap' }, h('table', null,
+    h('thead', null, h('tr', null, head.map((t, i) => h('th', { class: i >= numFrom ? 'num' : '' }, t)))),
+    h('tbody', null, rows.map(r => h('tr', null, r.map((c, i) => h('td', { class: i >= numFrom ? 'num' : '' }, c)))))));
+}
+
+function card(id, title, subtitle, draw, tableData, tools) {
+  const body = h('div', { class: 'chart' });
+  const showTable = state.tables.has(id);
+  const toggle = h('button', {
+    type: 'button', 'aria-pressed': String(showTable),
+    onclick: () => { state.tables.has(id) ? state.tables.delete(id) : state.tables.add(id); render(); },
+  }, showTable ? 'Chart view' : 'Table view');
+  const c = h('section', { class: 'card' },
+    h('div', { class: 'card-head' },
+      h('div', null, h('h2', null, title), subtitle ? h('p', { class: 'card-sub' }, subtitle) : null),
+      h('div', { class: 'card-tools' }, tools || null, tableData ? toggle : null)),
+    body);
+  view.append(c);
+  if (showTable && tableData) body.append(makeTable(tableData.head, tableData.rows, tableData.numFrom ?? 1));
+  else draw(body);
+  return c;
+}
+
+function tile(label, value, note, hero) {
+  return h('div', { class: 'tile' + (hero ? ' hero' : '') },
+    h('div', { class: 'label' }, label), h('div', { class: 'value' }, value), note ? h('div', { class: 'note' }, note) : null);
+}
+
+function segmented(options, current, onPick, label) {
+  return h('div', { class: 'seg', role: 'group', 'aria-label': label },
+    options.map(o => h('button', { type: 'button', 'aria-pressed': String(o.id === current), onclick: () => onPick(o.id) }, o.label)));
+}
+
+// ---------- periods ----------
+
+function periodKey(iso, grain) {
+  const y = iso.slice(0, 4), m = +iso.slice(5, 7);
+  if (grain === 'season') return y;
+  if (grain === 'quarter') return `${y} Q${Math.ceil(m / 3)}`;
+  return iso.slice(0, 7);
+}
+function periodList(rs, grain) {
+  if (!rs.length) return [];
+  const dates = rs.map(r => r.d).sort();
+  let [y, m] = dates[0].split('-').map(Number);
+  const [ly, lm] = dates[dates.length - 1].split('-').map(Number);
+  const out = [];
+  while (y < ly || (y === ly && m <= lm)) {
+    const k = periodKey(`${y}-${String(m).padStart(2, '0')}-01`, grain);
+    if (out[out.length - 1] !== k) out.push(k);
+    if (++m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+function periodLabel(k, grain) {
+  if (grain === 'month') { const [y, m] = k.split('-'); return `${MONTHS[+m - 1]} ${y}`; }
+  return k;
+}
+function xTicksFor(periods, grain) {
+  const out = [];
+  periods.forEach((k, i) => {
+    if (grain === 'season') out.push({ i, label: k });
+    else if (grain === 'quarter') { if (k.endsWith('Q1')) out.push({ i, label: k.slice(0, 4) }); }
+    else if (k.endsWith('-01')) out.push({ i, label: k.slice(0, 4) });
+  });
+  const thin = Math.ceil(out.length / 10);
+  return out.filter((_, i) => i % thin === 0);
+}
+
+// ---------- views ----------
+
+const view = document.getElementById('view');
+const courseLabel = key => {
+  const c = D.courses.find(c => c.key === key);
+  return key === 'all' || !c ? 'All courses' : `${c.course} · ${c.layout}`;
+};
+
+function renderScoring() {
+  const win = windowFor(state.range);
+  const slice = roundsSlice(win, state.course);
+  const full = complete(slice);
+  if (!full.length) { view.append(h('div', { class: 'empty' }, 'No complete rounds for this course and date range.')); return; }
+
+  const avgTp = mean(full.map(r => r.tp));
+  const prior = priorWindow(state.range);
+  let note = state.range === 'all' ? 'all time' : RANGES.find(r => r.id === state.range).label.toLowerCase();
+  if (prior) {
+    const pf = complete(roundsSlice(prior, state.course));
+    if (pf.length) {
+      const d = avgTp - mean(pf.map(r => r.tp));
+      note = `${d < 0 ? '▼' : d > 0 ? '▲' : '●'} ${Math.abs(d).toFixed(1)} strokes ${d < 0 ? 'better' : d > 0 ? 'worse' : 'the same'} than the prior period · ${full.length} rounds`;
+    }
+  } else note += ` · ${full.length} rounds`;
+  const best = full.reduce((a, b) => (b.tp < a.tp ? b : a));
+  const ratings = full.map(r => r.r).filter(v => v != null);
+  const holesScored = full.flatMap(r => r.s.map((s, i) => [s, r.q[i]])).filter(([s, q]) => s != null && q != null);
+  const birdieRate = holesScored.filter(([s, q]) => s < q).length / holesScored.length;
+  const blowRate = holesScored.filter(([s, q]) => s - q >= 2).length / holesScored.length;
+
+  view.append(h('div', { class: 'kpis' },
+    tile('Average strokes vs par per round', fmtPar(avgTp), note, true),
+    tile('Best round', fmtPar(best.tp, 0), `${best.c} · ${fmtDate(best.d)}`),
+    tile('Average round rating', ratings.length ? fmtInt(mean(ratings)) : '–', ratings.length ? `${ratings.length} rated rounds` : 'no rated rounds'),
+    tile('Birdie rate', (birdieRate * 100).toFixed(1) + '%', 'holes under par'),
+    tile('Blow-up rate', (blowRate * 100).toFixed(1) + '%', 'holes 2+ over par')));
+
+  const periods = periodList(full, state.grain);
+  const grainTools = segmented([{ id: 'month', label: 'Month' }, { id: 'quarter', label: 'Quarter' }, { id: 'season', label: 'Season' }],
+    state.grain, g => { state.grain = g; render(); }, 'Group by');
+  const byPeriod = new Map(periods.map(k => [k, []]));
+  for (const r of full) byPeriod.get(periodKey(r.d, state.grain)).push(r);
+  const points = (valueOf, fmt, extra) => periods.map(k => {
+    const rs = byPeriod.get(k), vs = rs.map(valueOf).filter(v => v != null);
+    const y = vs.length ? mean(vs) : null;
+    const bestR = rs.length ? rs.reduce((a, b) => (b.tp < a.tp ? b : a)) : null;
+    return {
+      y, title: periodLabel(k, state.grain),
+      rows: y == null ? [] : [[extra.name, fmt(y)], ['Rounds', String(rs.length)], ['Best round', `${fmtPar(bestR.tp, 0)} · ${bestR.c}, ${fmtDate(bestR.d)}`]],
+    };
+  });
+  const parPts = points(r => r.tp, v => fmtPar(v), { name: 'Avg vs par' });
+  const ratingPts = points(r => r.r, v => fmtInt(v), { name: 'Avg rating' });
+  const tableOf = (pts, fmt, name) => ({ head: ['Period', name, 'Rounds'], rows: periods.map((k, i) => [periodLabel(k, state.grain), pts[i].y == null ? '–' : fmt(pts[i].y), String(byPeriod.get(k).length)]) });
+  const scope = courseLabel(state.course);
+
+  card('trend', 'Strokes over par', `${scope} · lower is better · complete rounds only`,
+    el => lineChart(el, { points: parPts, n: periods.length, xTicks: xTicksFor(periods, state.grain), zero: true, fmt: v => fmtPar(v), yTitle: 'Strokes vs par', aria: 'Line chart of average strokes over par per period' }),
+    tableOf(parPts, v => fmtPar(v), 'Avg vs par'), grainTools);
+  card('rating', 'Round rating', `${scope} · higher is better`,
+    el => lineChart(el, { points: ratingPts, n: periods.length, xTicks: xTicksFor(periods, state.grain), zero: false, fmt: v => fmtInt(v), yTitle: 'Rating', aria: 'Line chart of average round rating per period' }),
+    tableOf(ratingPts, v => fmtInt(v), 'Avg rating'));
+
+  // birdies and blow-ups per round, by season
+  const seasons = periodList(full, 'season');
+  const cats = seasons.map(sn => {
+    const rs = full.filter(r => r.d.startsWith(sn));
+    const holes = rs.flatMap(r => r.s.map((s, i) => [s, r.q[i]])).filter(([s, q]) => s != null && q != null);
+    const bd = holes.filter(([s, q]) => s < q).length / rs.length, bl = holes.filter(([s, q]) => s - q >= 2).length / rs.length;
+    return { label: sn, vals: [bd, bl], rows: [['Birdies per round', bd.toFixed(1)], ['Blow-ups per round', bl.toFixed(1)], ['Rounds', String(rs.length)]] };
+  });
+  card('bb', 'Birdies and blow-ups per round', `${scope} · by season · a blow-up is 2+ over par`,
+    el => columnChart(el, { cats, series: [{ name: 'Birdies or better' }, { name: 'Blow-ups' }], fmt: v => v.toFixed(1), yTitle: 'Holes per round', aria: 'Grouped columns of birdies and blow-ups per round by season' }),
+    { head: ['Season', 'Birdies per round', 'Blow-ups per round', 'Rounds'], rows: cats.map(c => [c.label, c.vals[0].toFixed(1), c.vals[1].toFixed(1), c.rows[2][1]]) });
+
+  // courses table: date range only
+  const inRange = complete(D.rounds.filter(r => inWin(r.d, win)));
+  const groups = new Map();
+  for (const r of inRange) { const k = courseKey(r); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); }
+  const rows = [...groups.entries()].filter(([, rs]) => rs.length >= 4).sort((a, b) => b[1].length - a[1].length).map(([, rs]) => {
+    const b = rs.reduce((p, q) => (q.tp < p.tp ? q : p));
+    return [`${rs[0].c} · ${rs[0].l}`, String(rs.length), fmtPar(mean(rs.map(r => r.tp))), `${fmtPar(b.tp, 0)} (${fmtDate(b.d)})`, fmtDate(rs[rs.length - 1].d)];
+  });
+  view.append(h('section', { class: 'card' },
+    h('div', { class: 'card-head' }, h('div', null, h('h2', null, 'Courses'), h('p', { class: 'card-sub' }, 'Layouts with 4+ complete rounds in the date range · not affected by the course filter'))),
+    rows.length ? makeTable(['Course · layout', 'Rounds', 'Avg vs par', 'Best round', 'Last played'], rows) : h('div', { class: 'empty' }, 'No course has 4+ rounds in this range.')));
+}
+
+function holeCells(rs) {
+  // per hole: scored holes with known par
+  const byHole = new Map();
+  for (const r of rs) r.s.forEach((s, i) => {
+    const q = r.q[i];
+    if (s == null || q == null) return;
+    if (!byHole.has(i + 1)) byHole.set(i + 1, []);
+    byHole.get(i + 1).push({ s, q, over: s - q, d: r.d });
+  });
+  return byHole;
+}
+
+function renderHoles() {
+  if (state.course === 'all') { view.append(h('div', { class: 'empty' }, 'Pick a course in the filter above to see its holes.')); return; }
+  const win = windowFor(state.range);
+  const rs = roundsSlice(win, state.course);
+  const byHole = holeCells(rs);
+  if (!byHole.size) { view.append(h('div', { class: 'empty' }, 'No hole scores for this course and date range.')); return; }
+  const holes = [...byHole.keys()].sort((a, b) => a - b);
+  const scope = courseLabel(state.course);
+
+  const total = hnum => byHole.get(hnum).reduce((a, c) => a + c.over, 0);
+  const avg = hnum => mean(byHole.get(hnum).map(c => c.over));
+  const metric = state.holeMetric === 'total' ? total : avg;
+  const top3 = new Set([...holes].sort((a, b) => metric(b) - metric(a)).slice(0, 3));
+  const cats = holes.map(hn => {
+    const cs = byHole.get(hn), over = cs.map(c => c.over);
+    return {
+      label: String(hn), title: `Hole ${hn} (par ${cs[cs.length - 1].q})`, vals: [metric(hn)],
+      rows: [['Strokes vs par, total', fmtPar(total(hn), 0)], ['Average vs par', fmtPar(avg(hn), 2)], ['Blow-ups (2+ over)', String(over.filter(o => o >= 2).length)],
+        ['Birdies or better', String(over.filter(o => o < 0).length)], ['Worst score', String(Math.max(...cs.map(c => c.s)))], ['Rounds', String(cs.length)]],
+    };
+  });
+  const metricTools = segmented([{ id: 'total', label: 'Total strokes' }, { id: 'avg', label: 'Per round' }], state.holeMetric, m => { state.holeMetric = m; render(); }, 'Metric');
+  card('holes', 'Where the strokes go', `${scope} · strokes against par on each hole · top 3 highlighted`,
+    el => columnChart(el, {
+      cats, series: [{ name: state.holeMetric === 'total' ? 'Total strokes vs par' : 'Average vs par' }], signed: true,
+      fmt: v => (state.holeMetric === 'total' ? fmtPar(v, 0) : fmtPar(v, 2)),
+      colorFor: c => (top3.has(+c.label) ? 'f1' : 'fgray'), labelFor: c => top3.has(+c.label),
+      yTitle: state.holeMetric === 'total' ? 'Total strokes vs par' : 'Average strokes vs par', aria: 'Columns of strokes against par by hole',
+    }),
+    { head: ['Hole', 'Par', 'Rounds', 'Total vs par', 'Avg vs par', 'Blow-ups', 'Birdies+', 'Worst'],
+      rows: holes.map(hn => { const cs = byHole.get(hn), over = cs.map(c => c.over); return [String(hn), String(cs[cs.length - 1].q), String(cs.length), fmtPar(total(hn), 0), fmtPar(avg(hn), 2), String(over.filter(o => o >= 2).length), String(over.filter(o => o < 0).length), String(Math.max(...cs.map(c => c.s)))]; }) } , metricTools);
+
+  const years = [...new Set(rs.map(r => r.d.slice(0, 4)))].sort();
+  const cells = holes.map(hn => years.map(yr => {
+    const cs = byHole.get(hn).filter(c => c.d.startsWith(yr));
+    if (!cs.length) return null;
+    const v = mean(cs.map(c => c.over));
+    return { v, rows: [['Average vs par', fmtPar(v, 2)], ['Average score', mean(cs.map(c => c.s)).toFixed(2)], ['Blow-ups', String(cs.filter(c => c.over >= 2).length)], ['Rounds', String(cs.length)]] };
+  }));
+  card('heat', 'Each hole, season by season', `${scope} · average strokes against par · blue is under par, red is over`,
+    el => heatmap(el, { rows: holes.map(String), cols: years, cells, scale: 1, rowLabel: 'Hole', aria: 'Heatmap of average strokes against par by hole and season' }),
+    { head: ['Hole', ...years], rows: holes.map((hn, ri) => [String(hn), ...cells[ri].map(c => (c ? fmtPar(c.v, 2) : '–'))]) });
+}
+
+function renderThrows() {
+  const win = windowFor(state.range);
+  const ts = D.throws.filter(t => inWin(t.d, win));
+  if (!ts.length) { view.append(h('div', { class: 'empty' }, D.throws.length ? 'No throws in this date range.' : 'No TechDisc throws found. Set TECHDISC_CSV_DIR and regenerate.')); return; }
+  const sp = ts.map(t => t.sp).filter(v => v != null), di = ts.map(t => t.di).filter(v => v != null);
+  const months = periodList(ts, 'month');
+  view.append(h('div', { class: 'kpis' },
+    tile('Average throw speed', mean(sp).toFixed(1) + ' mph', `${ts.length} throws · fastest ${Math.max(...sp).toFixed(1)} mph`, true),
+    tile('Average distance', fmtInt(mean(di)) + ' ft', 'per throw'),
+    tile('Longest throw', fmtInt(Math.max(...di)) + ' ft', fmtDate(ts.find(t => t.di === Math.max(...di)).d)),
+    tile('Average spin', fmtInt(mean(ts.map(t => t.sr).filter(v => v != null))) + ' rpm', 'revolutions per minute'),
+    tile('Months of data', String(months.length), `${ts[0].d} to ${ts[ts.length - 1].d}`)));
+  if (months.length < 6) view.append(h('p', { class: 'sub' }, `Only ${months.length} month${months.length === 1 ? '' : 's'} of throws so far, so monthly trends are short and noisy.`));
+
+  const byMonth = new Map(months.map(k => [k, []]));
+  for (const t of ts) byMonth.get(t.d.slice(0, 7)).push(t);
+  const mk = (field, fmt, name) => months.map(k => {
+    const vs = byMonth.get(k).map(t => t[field]).filter(v => v != null), y = vs.length ? mean(vs) : null;
+    return { y, title: periodLabel(k, 'month'), rows: y == null ? [] : [[name, fmt(y)], ['Throws', String(byMonth.get(k).length)]] };
+  });
+  const speedPts = mk('sp', v => v.toFixed(1) + ' mph', 'Avg speed'), distPts = mk('di', v => fmtInt(v) + ' ft', 'Avg distance');
+  const table = (pts, name, fmt) => ({ head: ['Month', name, 'Throws'], rows: months.map((k, i) => [periodLabel(k, 'month'), pts[i].y == null ? '–' : fmt(pts[i].y), String(byMonth.get(k).length)]) });
+  card('speed', 'Throw speed', 'TechDisc · average by month', el => lineChart(el, { points: speedPts, n: months.length, xTicks: months.map((k, i) => ({ i, label: periodLabel(k, 'month') })), zero: false, fmt: v => v.toFixed(1), yTitle: 'mph', aria: 'Line chart of average throw speed by month' }), table(speedPts, 'Avg speed (mph)', v => v.toFixed(1)));
+  card('dist', 'Throw distance', 'TechDisc · average by month', el => lineChart(el, { points: distPts, n: months.length, xTicks: months.map((k, i) => ({ i, label: periodLabel(k, 'month') })), zero: false, fmt: v => fmtInt(v), yTitle: 'feet', aria: 'Line chart of average throw distance by month' }), table(distPts, 'Avg distance (ft)', v => fmtInt(v)));
+
+  const styles = new Map();
+  for (const t of ts) { const k = `${t.pt} ${t.tt}`; if (!styles.has(k)) styles.set(k, []); styles.get(k).push(t); }
+  const sc = [...styles.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, arr]) => {
+    const d = mean(arr.map(t => t.di).filter(v => v != null)), s = mean(arr.map(t => t.sp).filter(v => v != null));
+    return { label: k, vals: [d], rows: [['Avg distance', fmtInt(d) + ' ft'], ['Avg speed', fmtN(s) + ' mph'], ['Throws', String(arr.length)]] };
+  });
+  card('style', 'Distance by throw style', 'TechDisc · average distance, most-thrown style first',
+    el => columnChart(el, { cats: sc.map(c => ({ ...c, label: c.label.replace(' ', '\n') })), series: [{ name: 'Avg distance (ft)' }], fmt: v => fmtInt(v), labelFor: () => true, yTitle: 'feet', aria: 'Columns of average distance by throw style', height: 300 }),
+    { head: ['Style', 'Avg distance (ft)', 'Avg speed (mph)', 'Throws'], rows: sc.map(c => [c.label, c.rows[0][1].replace(' ft', ''), c.rows[1][1].replace(' mph', ''), c.rows[2][1]]) });
+}
+
+// ---------- shell ----------
+
+function renderShell() {
+  document.getElementById('title').textContent = `${D.player}’s disc golf trends`;
+  document.getElementById('subtitle').textContent = D.through
+    ? `${D.rounds.length} rounds through ${fmtDate(D.through)} · generated from your UDisc and TechDisc exports, on this computer only`
+    : 'No rounds found.';
+  const f = document.getElementById('filters');
+  const courseSel = h('select', { id: 'course', onchange: ev => { state.course = ev.target.value; render(); } },
+    h('option', { value: 'all' }, 'All courses'),
+    D.courses.map(c => h('option', { value: c.key }, `${c.course} · ${c.layout} (${c.n})`)));
+  courseSel.value = state.course;
+  courseSel.disabled = state.tab === 'throws';
+  f.replaceChildren(
+    h('span', null, h('label', { for: 'course' }, 'Course'), courseSel),
+    h('span', null, h('label', null, 'Dates'), segmented(RANGES, state.range, r => { state.range = r; render(); }, 'Date range')));
+  const tabs = document.getElementById('tabs');
+  tabs.replaceChildren(...[['scoring', 'Scoring'], ['holes', 'Holes'], ['throws', 'Throws']].map(([id, label]) =>
+    h('button', { type: 'button', role: 'tab', 'aria-selected': String(state.tab === id), onclick: () => { state.tab = id; history.replaceState(null, '', '#' + id); render(); } }, label)));
+}
+
+function render() {
+  tip.hide();
+  document.getElementById('err').textContent = '';
+  try {
+    renderShell();
+    view.replaceChildren();
+    ({ scoring: renderScoring, holes: renderHoles, throws: renderThrows })[state.tab]();
+  } catch (e) {
+    document.getElementById('err').textContent = 'Dashboard error: ' + e.message + '\n' + (e.stack || '');
+  }
+}
+
+let resizeTimer;
+new ResizeObserver(() => { cancelAnimationFrame(resizeTimer); resizeTimer = requestAnimationFrame(render); }).observe(document.querySelector('main'));
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
+render();
+})();
+</script>
+</body>
+</html>
