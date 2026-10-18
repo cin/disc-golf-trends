@@ -104,12 +104,13 @@ drop.addEventListener("drop", (ev) => {
 // A file dropped outside the zone would make the browser navigate away to it; ignore those.
 for (const type of ["dragover", "drop"]) window.addEventListener(type, (ev) => ev.preventDefault());
 
-// Grow the frame to fit the dashboard so the page scrolls as one, and follow its tab and window changes.
+// Size the frame to fit the dashboard so the page scrolls as one, and follow its tab and window changes. The body is
+// measured, not the document: the document is never shorter than the frame, so the frame could only ever grow.
 frame.addEventListener("load", () => {
   const doc = frame.contentDocument;
   if (!doc) return;
   const fit = () => {
-    frame.style.height = `${doc.documentElement.scrollHeight}px`;
+    frame.style.height = `${Math.ceil(doc.body.getBoundingClientRect().height)}px`;
   };
   fit();
   new ResizeObserver(fit).observe(doc.body);

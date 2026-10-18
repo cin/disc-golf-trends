@@ -100,7 +100,9 @@ bests at a course in blue; the three costliest holes highlighted; birdies and bl
 at each score by season; a courses table),
 **Holes** (where the strokes go on a chosen course, and a hole-by-season heatmap) and **Throws** (TechDisc speed and
 distance trends). Filters at the top scope the whole page by course and date range; "Highlight season" shades one
-season on the charts and dims the others without filtering anything. Every chart has a table view.
+season on the charts and dims the others without filtering anything. Every chart has a table view. Holes shows one
+course at a time, so with "All courses" it asks you to pick one (and offers your most played). Throws only uses the
+date range, and says so next to the greyed-out course and season controls.
 
 **Themes** (menu at the top right, remembered in the browser): *System* follows your light or dark setting,
 *Mocha* is Catppuccin Mocha, and the third entry is the opposite of your system look (Dark on a light system, Light

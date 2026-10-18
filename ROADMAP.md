@@ -45,8 +45,10 @@ TechDisc export usually holds.
 The site at https://cin.github.io/disc-golf-trends/ works and is tested against the Python implementation, but:
 
 - **No automated browser test.** The file picker and drag and drop have only been checked by hand; the sample-data
-  button and the page logic (`site/src/app.ts`) are tested. A Playwright test that picks the fixture files would close
-  the gap.
+  button and the page logic (`site/src/app.ts`) are tested. A Playwright test that picks the fixture files, switches
+  tabs and changes the course dropdown would close the gap. It would have caught a real bug: inside the site's
+  `about:srcdoc` frame `history.replaceState` throws, so the tabs looked stuck until something else re-rendered (now
+  guarded, with a template test).
 - **TechDisc export instructions.** The page says how to export from UDisc but only describes the TechDisc file by its
   columns, because the app's export steps have not been confirmed. Add them once known.
 - **Throws only for the main player.** A scorecard export lists co-players, but a TechDisc export has no player name,

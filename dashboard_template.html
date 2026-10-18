@@ -152,6 +152,10 @@ th { color: var(--text-secondary); font-weight: 600; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .table-wrap { overflow-x: auto; }
 .empty { color: var(--text-secondary); padding: 24px 0; }
+.empty p { margin: 0 0 12px; }
+.filter-note { color: var(--text-secondary); font-size: 13px; }
+.filters.needs-course select#course { outline: 2px solid var(--series-2); outline-offset: 1px; }
+.tabs button.needs-course { color: var(--text-muted); }
 #tip {
   position: fixed; z-index: 10; pointer-events: none; display: none; min-width: 140px; max-width: 280px;
   background: var(--surface-1); border: 1px solid var(--axis); border-radius: 8px; padding: 8px 10px;
@@ -785,6 +789,7 @@ function renderScoring() {
     tableOf(ratingPts, v => fmtInt(v), 'Avg rating'));
 
   if (state.course !== 'all') renderHoles(true); // the costliest-holes highlight, same card as on the Holes tab
+  else view.append(h('div', { class: 'empty' }, 'Pick a course in the filter above to see where the strokes go on its holes.'));
 
   // birdies and blow-ups per round, by season
   const seasons = periodList(full, 'season');
@@ -841,7 +846,15 @@ function holeCells(rs) {
 }
 
 function renderHoles(costOnly) {
-  if (state.course === 'all') { view.append(h('div', { class: 'empty' }, 'Pick a course in the filter above to see its holes.')); return; }
+  if (state.course === 'all') {
+    const top = D.courses[0]; // the most played course and layout
+    view.append(h('div', { class: 'empty' },
+      h('p', null, top
+        ? 'Holes are shown one course at a time. Pick a course in the filter above, or:'
+        : 'Holes are shown one course at a time, but no course has 4 or more rounds yet, so there is nothing to pick.'),
+      top ? h('button', { type: 'button', onclick: () => { state.course = top.key; render(); } }, `Show ${top.course} · ${top.layout}`) : null));
+    return;
+  }
   const win = windowFor(state.range);
   const rs = roundsSlice(win, state.course);
   const byHole = holeCells(rs);
@@ -930,28 +943,46 @@ function renderShell() {
     ? `${D.rounds.length} rounds through ${fmtDate(D.through)} · ${D.note ? D.note + ' · ' : ''}generated from your UDisc${D.note ? '' : ' and TechDisc'} export, on this computer only`
     : 'No rounds found.';
   const f = document.getElementById('filters');
-  const courseSel = h('select', { id: 'course', onchange: ev => { state.course = ev.target.value; render(); } },
+  // Some controls do not apply to the tab being shown. Say so in words next to them, instead of only greying them out.
+  const throwsTab = state.tab === 'throws';
+  const needsCourse = state.tab === 'holes' && state.course === 'all';
+  const note = throwsTab ? 'Throws are not tied to a course or season: only the date range applies here.'
+    : needsCourse ? 'Holes are shown one course at a time. Pick a course.' : '';
+  f.classList.toggle('needs-course', needsCourse);
+  const courseSel = h('select', { id: 'course', 'aria-describedby': note ? 'filter-note' : null, title: throwsTab ? 'Not used on the Throws tab' : null, onchange: ev => { state.course = ev.target.value; render(); } },
     h('option', { value: 'all' }, 'All courses'),
     D.courses.map(c => h('option', { value: c.key }, `${c.course} · ${c.layout} (${c.n})`)));
   courseSel.value = state.course;
-  courseSel.disabled = state.tab === 'throws';
+  courseSel.disabled = throwsTab;
   const seasons = [...new Set(D.rounds.map(r => r.d.slice(0, 4)))].sort();
-  const hlSel = h('select', { id: 'hl', onchange: ev => { state.hl = ev.target.value; render(); } },
+  const hlSel = h('select', { id: 'hl', 'aria-describedby': note ? 'filter-note' : null, title: throwsTab ? 'Not used on the Throws tab' : null, onchange: ev => { state.hl = ev.target.value; render(); } },
     h('option', { value: '' }, 'None'), seasons.map(s => h('option', { value: s }, s)));
   hlSel.value = state.hl;
-  hlSel.disabled = state.tab === 'throws';
+  hlSel.disabled = throwsTab;
   f.replaceChildren(
     h('span', null, h('label', { for: 'course' }, 'Course'), courseSel),
     h('span', null, h('label', { for: 'hl' }, 'Highlight season'), hlSel),
-    h('span', null, h('label', null, 'Dates'), segmented(RANGES, state.range, r => { state.range = r; render(); }, 'Date range')));
+    h('span', null, h('label', null, 'Dates'), segmented(RANGES, state.range, r => { state.range = r; render(); }, 'Date range')),
+    ...(note ? [h('span', { class: 'filter-note', id: 'filter-note', role: 'status' }, note)] : []));
   const tabs = document.getElementById('tabs');
   tabs.replaceChildren(...[['scoring', 'Scoring'], ['holes', 'Holes'], ['throws', 'Throws']].map(([id, label]) =>
-    h('button', { type: 'button', role: 'tab', 'aria-selected': String(state.tab === id), onclick: () => { state.tab = id; history.replaceState(null, '', '#' + id); render(); } }, label)));
+    h('button', {
+      type: 'button', role: 'tab', id: 'tab-' + id, 'aria-selected': String(state.tab === id),
+      class: id === 'holes' && state.course === 'all' ? 'needs-course' : null,
+      title: id === 'holes' && state.course === 'all' ? 'Pick a course first' : null,
+      onclick: () => {
+        state.tab = id;
+        // The website shows this page inside an about:srcdoc frame, where changing the URL throws; the tab still switches.
+        try { history.replaceState(null, '', '#' + id); } catch (e) { /* the address just does not follow the tab */ }
+        render();
+      },
+    }, label)));
 }
 
 function render() {
   tip.hide();
   document.getElementById('err').textContent = '';
+  const focusId = document.activeElement && document.activeElement.id; // the controls are rebuilt on every render
   try {
     renderShell();
     view.replaceChildren();
@@ -959,6 +990,8 @@ function render() {
   } catch (e) {
     document.getElementById('err').textContent = 'Dashboard error: ' + e.message + '\n' + (e.stack || '');
   }
+  const again = focusId ? document.getElementById(focusId) : null;
+  if (again && !again.disabled && again !== document.activeElement) again.focus();
 }
 
 let resizeTimer;

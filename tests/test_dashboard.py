@@ -117,3 +117,17 @@ def test_main_works_without_techdisc(data_dir, tmp_path_factory, monkeypatch):
     monkeypatch.setattr(config, "load_env", lambda: None)  # don't pick TECHDISC_CSV_DIR back up from the real .env
     dashboard.main(["--out", str(out)])
     assert embedded(out.read_text(encoding="utf-8"))["throws"] == []
+
+
+def test_template_tab_switch_survives_a_url_that_cannot_change():
+    """The website shows the page in an about:srcdoc frame, where history.replaceState throws a SecurityError.
+    If that escapes the click handler the tab never re-renders, so the call must be guarded."""
+    source = dashboard.TEMPLATE.read_text(encoding="utf-8")
+    assert re.search(r"try \{ history\.replaceState\([^)]*\); \} catch", source)
+
+
+def test_template_explains_controls_that_do_not_apply():
+    source = dashboard.TEMPLATE.read_text(encoding="utf-8")
+    assert "Throws are not tied to a course" in source  # said next to the greyed-out controls
+    assert "Holes are shown one course at a time" in source  # said on the Holes tab and beside the filters
+    assert "aria-describedby" in source  # tied to the controls for screen readers
