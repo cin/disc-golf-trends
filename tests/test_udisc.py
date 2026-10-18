@@ -147,6 +147,15 @@ def test_scoring_trends_by_season_and_month(alex):
     seasons = ud.scoring_trends(alex, group_by="season")
     assert [(s["period"], s["rounds"]) for s in seasons] == [("2025", 2), ("2026", 2)]
     assert seasons[0]["avg_to_par"] == 1.5
+    # best round is named by course and date: 2025 -> par round on 2025-06-14; 2026 -> tie at +2, earliest wins
+    assert seasons[0]["best_round"] == {
+        "round_id": "2025-06-14 0900",
+        "date": "2025-06-14",
+        "course": "Pine Hollow",
+        "layout": "Main",
+    }
+    assert (seasons[1]["best_to_par"], seasons[1]["best_round"]["course"]) == (2, "Pine Hollow")
+    assert seasons[1]["best_round"]["date"] == "2026-05-02"
     months = ud.scoring_trends(alex, course="Pine Hollow", group_by="month")
     assert [m["period"] for m in months] == ["2025-05", "2025-06", "2026-05"]
     with pytest.raises(ValueError):

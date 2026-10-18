@@ -339,12 +339,19 @@ def scoring_trends(rounds, course=None, layout=None, group_by="month"):
     for period in sorted(buckets):
         brs = buckets[period]
         ratings = [r.rating for r in brs if r.rating is not None]
+        best = min(brs, key=lambda r: r.to_par)  # earliest round wins a tie
         out.append(
             {
                 "period": period,
                 "rounds": len(brs),
                 "avg_to_par": round(mean(r.to_par for r in brs), 2),
-                "best_to_par": min(r.to_par for r in brs),
+                "best_to_par": best.to_par,
+                "best_round": {
+                    "round_id": best.round_id,
+                    "date": best.start.date().isoformat(),
+                    "course": best.course,
+                    "layout": best.layout,
+                },
                 "avg_rating": round(mean(ratings)) if ratings else None,
             }
         )
