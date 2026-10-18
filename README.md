@@ -75,7 +75,7 @@ Claude Desktop (`claude_desktop_config.json`):
 | `throw_stats` | TechDisc: speed, distance, spin and angle averages/maxima, overall and by throw style |
 | `throw_trends` | TechDisc: those numbers by month or season |
 
-Example questions: "Which holes at Gatewood cost me the most strokes?", "How has my scoring trended each season?",
+Example questions: "Which holes at my home course cost me the most strokes?", "How has my scoring trended each season?",
 "Compare 2025 and 2026."
 
 ## Dashboard

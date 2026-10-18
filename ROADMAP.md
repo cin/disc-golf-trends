@@ -4,12 +4,13 @@ Ideas that are not built yet. None of them blocks the current server.
 
 ## Training: distance and control
 
-The owner is doing strength training to gain distance and control. TechDisc speed and distance trends (Throws tab of
-the dashboard) are the direct measure. Not built yet, and only meaningful once there are several months of throws:
+TechDisc speed and distance trends (Throws tab of the dashboard) show whether practice or training is paying off in
+distance and control. The ideas below are not built yet, and are only meaningful once there are several months of
+throws:
 
 - **Consistency ("control")**: spread (standard deviation) of hyzer, nose and launch angle and of distance, within a
   throw style such as backhand hyzer, by month. Needs a throw-style filter on the Throws tab.
-- **Training log**: if the owner keeps one (dates, lifts), overlay it on speed and distance trends. Needs a data file.
+- **Training log**: if you keep one (dates, sessions), overlay it on speed and distance trends. Needs a data file.
 - **Speed to distance**: scatter of speed against distance per throw, to see whether added speed turns into distance.
 
 ## Side quest: on-course throw tracking (Apple Watch and friends)
@@ -35,5 +36,5 @@ Next steps when picking this up:
 2. Check the UDisc app for any new export of tracked shots.
 3. If a file exists, look at its columns first, then add a small loader next to `techdisc_data.py`.
 
-Linking practice or on-course throws to rounds would have to go by date. That needs more data than the 58 TechDisc
-throws available today.
+Linking practice or on-course throws to rounds would have to go by date. That needs more throws than a first
+TechDisc export usually holds.
