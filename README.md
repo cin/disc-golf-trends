@@ -1,10 +1,12 @@
-# udisc-mcp
+# disc-golf-journal
 
-A read-only [MCP](https://modelcontextprotocol.io) server that lets Claude answer questions about your disc golf
-rounds, courses and scoring trends from a UDisc scorecard CSV export.
+Your disc golf rounds and practice throws, from your own exports. It has two parts: a read-only
+[MCP](https://modelcontextprotocol.io) server that lets Claude answer questions about your rounds, courses and
+scoring trends, and an offline HTML dashboard of the same data. (Formerly `udisc-mcp`. Not affiliated with UDisc or
+TechDisc.)
 
-**No credentials and no network access.** UDisc has no public API, and its Terms prohibit scraping, so this server
-never contacts UDisc. It only reads the CSV that the UDisc app exports. Nothing is modified.
+**No credentials and no network access.** UDisc has no public API, and its Terms prohibit scraping, so this project
+never contacts UDisc or TechDisc. It only reads the CSV files their apps export. Nothing is modified.
 
 ## Get your data
 
@@ -40,7 +42,7 @@ start if `.env` is readable by other users (`chmod 600 .env`).
 Claude Code:
 
 ```
-claude mcp add udisc -- C:\path\to\udisc-mcp\.venv\Scripts\python C:\path\to\udisc-mcp\udisc_mcp.py
+claude mcp add udisc -- C:\path\to\disc-golf-journal\.venv\Scripts\python C:\path\to\disc-golf-journal\udisc_mcp.py
 ```
 
 Claude Desktop (`claude_desktop_config.json`):
@@ -49,8 +51,8 @@ Claude Desktop (`claude_desktop_config.json`):
 {
   "mcpServers": {
     "udisc": {
-      "command": "C:\\path\\to\\udisc-mcp\\.venv\\Scripts\\python.exe",
-      "args": ["C:\\path\\to\\udisc-mcp\\udisc_mcp.py"]
+      "command": "C:\\path\\to\\disc-golf-journal\\.venv\\Scripts\\python.exe",
+      "args": ["C:\\path\\to\\disc-golf-journal\\udisc_mcp.py"]
     }
   }
 }
