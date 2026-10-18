@@ -326,3 +326,68 @@ def test_every_top_level_module_is_packaged():
     declared = set(re.search(r"py-modules = \[(.*?)\]", text, re.S).group(1).replace('"', "").replace(",", " ").split())
     assert declared == {p.stem for p in root.glob("*.py")}
     assert (root / "dashboard_template.html").exists()
+
+
+# ---------- scratched holes: the file's Total as a cross-check ----------
+
+
+def _scorecard(tmp_path, scores, total, pars=(3, 3, 3, 3, 3)):
+    """One Alex round of len(scores) holes whose Total column is `total` (a string, so it can be blank)."""
+    header = FIXTURE.read_text(encoding="utf-8").splitlines()[0]
+
+    def cells(values):
+        return ",".join(str(v) for v in [*values, *[""] * (21 - len(values))])
+
+    stamp = "2026-05-28 1852-0400,2026-05-28 1928-0400"
+    lines = [
+        header,
+        f"Par,Test,Main,{stamp},{sum(pars)},,,{cells(pars)}",
+        f"Alex,Test,Main,{stamp},{total},0,,{cells(scores)}",
+    ]
+    (tmp_path / "x.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return ud.load_rounds(tmp_path, player="Alex")
+
+
+def test_scratched_hole_is_dropped_when_total_points_at_one_hole(tmp_path):
+    # Hole 3 holds a placeholder 1, but UDisc's Total (13) leaves it out: 3+4+3+3 = 13
+    (r,) = _scorecard(tmp_path, [3, 4, 1, 3, 3], "14")  # sum is 14, Total 14: nothing to explain
+    assert (r.scratched, r.total_gap, r.total) == ([], None, 14)
+    (r,) = _scorecard(tmp_path, [3, 4, 1, 3, 3], "13")
+    assert r.scratched == [3]
+    assert r.total_gap is None
+    assert r.played == [1, 2, 4, 5]
+    assert (r.total, r.par, r.to_par) == (13, 12, 1)
+    assert ud.round_detail(r)["scratched_holes"] == [3]
+    assert ud.round_detail(r)["holes_detail"][2]["score"] is None
+
+
+def test_gap_that_several_holes_could_explain_is_reported_not_guessed(tmp_path):
+    (r,) = _scorecard(tmp_path, [3, 4, 3, 3, 3], "13")  # off by 3, and four holes scored 3
+    assert r.scratched == []
+    assert r.total_gap == 3
+    assert r.total == 16  # the holes still count; only the gap is reported
+
+
+def test_gap_with_no_matching_hole_or_a_total_that_is_too_high_changes_nothing(tmp_path):
+    (r,) = _scorecard(tmp_path, [3, 4, 4, 3, 3], "10")  # off by 7, no hole scored 7
+    assert (r.scratched, r.total_gap, r.total) == ([], 7, 17)
+    (r,) = _scorecard(tmp_path, [3, 4, 3, 3, 3], "20")  # Total is larger than the holes
+    assert (r.scratched, r.total_gap, r.total) == ([], -4, 16)
+
+
+def test_missing_total_changes_nothing(tmp_path):
+    (r,) = _scorecard(tmp_path, [3, 4, 1, 3, 3], "")
+    assert (r.scratched, r.total_gap, r.total) == ([], None, 14)
+
+
+def test_round_whose_only_scored_hole_was_scratched_is_dropped(tmp_path):
+    assert _scorecard(tmp_path, [0, 0, 1, 0, 0], "0") == []
+
+
+def test_export_status_counts_the_rounds_it_adjusted(tmp_path, monkeypatch):
+    _scorecard(tmp_path, [3, 4, 1, 3, 3], "13")
+    monkeypatch.setenv("UDISC_CSV_DIR", str(tmp_path))
+    monkeypatch.setenv("UDISC_PLAYER", "Alex")
+    config.clear_caches()
+    status = srv.export_status()
+    assert (status["rounds_with_scratched_holes"], status["rounds_with_unexplained_total_gap"]) == (1, 0)

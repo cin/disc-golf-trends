@@ -3,7 +3,8 @@
 //
 // Export layout (one row per player per round, preceded by a "Par" pseudo-player row for the same round):
 // PlayerName,CourseName,LayoutName,StartDate,EndDate,Total,+/-,RoundRating,Hole1..HoleN
-// Dates look like "2026-10-17 1735-0400".
+// Dates look like "2026-10-17 1735-0400". Totals are summed from the hole scores; the file's Total column is only
+// used to spot a scratched hole (see reconcileTotal).
 //
 // Result objects keep the Python snake_case keys so the two implementations can be compared field for field.
 
@@ -68,6 +69,10 @@ export class Round {
     readonly scores: (number | null)[],
     readonly pars: (number | null)[],
     readonly rating: number | null = null,
+    /** Holes (1-based) left out because UDisc's own Total shows they did not count. */
+    readonly scratched: number[] = [],
+    /** The hole sum minus the file's Total, when that could not be explained. */
+    readonly totalGap: number | null = null,
   ) {}
 
   get roundId(): string {
@@ -87,7 +92,7 @@ export class Round {
     return out;
   }
 
-  /** Sum of the scored holes. The file's Total column is ignored: it can disagree with the hole scores. */
+  /** Sum of the scored holes (the file's Total is not read here; see reconcileTotal for how it is used). */
   get total(): number | null {
     const done = this.scores.filter((s): s is number => s !== null);
     return done.length ? done.reduce((a, b) => a + b, 0) : null;
@@ -138,6 +143,33 @@ function toScore(raw: unknown): number | null {
 function holeColumns(header: readonly string[]): string[] {
   const holes = header.filter((c) => c.startsWith("Hole") && /^\d+$/.test(c.slice(4)));
   return holes.sort((a, b) => Number(a.slice(4)) - Number(b.slice(4)));
+}
+
+/**
+ * Use the file's Total to spot a scratched hole. Returns [scores, scratched hole numbers, unexplained gap].
+ *
+ * A hole the player skipped ("-" in the app) still holds a placeholder score in its column, but UDisc leaves it out of
+ * its own Total. If the scored holes add up to exactly one hole's score more than Total, that hole did not count, so it
+ * is dropped. If no hole or several holes could explain the gap, nothing is dropped and the gap is returned so it can
+ * be reported. A missing Total, or one that matches, changes nothing. (Port of udisc_data._reconcile_total.)
+ */
+export function reconcileTotal(
+  values: readonly (number | null)[],
+  total: number | null,
+): [(number | null)[], number[], number | null] {
+  if (total === null) return [[...values], [], null];
+  const scored = values.flatMap((v, i) => (v === null ? [] : [[i, v] as const]));
+  const gap = scored.reduce((sum, [, v]) => sum + v, 0) - total;
+  if (gap === 0) return [[...values], [], null];
+  if (gap > 0) {
+    const candidates = scored.filter(([, v]) => v === gap).map(([i]) => i);
+    if (candidates.length === 1) {
+      const fixed = [...values];
+      fixed[candidates[0] as number] = null;
+      return [fixed, [(candidates[0] as number) + 1], null];
+    }
+  }
+  return [[...values], [], gap];
 }
 
 /** Drop trailing blanks: the export always has 21 hole columns, but layouts have fewer holes. */
@@ -193,16 +225,18 @@ export function loadRounds(files: readonly CsvFile[], player: string | null = nu
     }
   }
   const rounds: Round[] = [];
-  for (const { row, values, start } of playerRows.values()) {
+  for (const { row, values: rawValues, start } of playerRows.values()) {
     const name = row["PlayerName"] ?? "";
     if (player && casefold(name) !== casefold(player)) continue;
+    const [values, scratched, gap] = reconcileTotal(rawValues, toInt(row["Total"]));
+    if (values.every((v) => v === null)) continue; // the only scored hole was a scratched one
     const course = row["CourseName"] ?? "";
     const layout = row["LayoutName"] ?? "";
     const pars = parRows.get(keyOf(course, layout, start)) ?? [];
     const holes = Math.max(trim(values).length, trim(pars).length);
     const pad = <T>(xs: (T | null)[]): (T | null)[] => Array.from({ length: holes }, (_, i) => xs[i] ?? null);
     rounds.push(
-      new Round(name, course, layout, start, parseDate(row["EndDate"]), pad(values), pad(pars), toInt(row["RoundRating"])),
+      new Round(name, course, layout, start, parseDate(row["EndDate"]), pad(values), pad(pars), toInt(row["RoundRating"]), scratched, gap),
     );
   }
   return rounds.sort((a, b) => a.start.ms - b.start.ms || cmp(a.player, b.player));
@@ -259,6 +293,8 @@ export function roundDetail(r: Round) {
   return {
     ...summarizeRound(r),
     player: r.player,
+    scratched_holes: r.scratched,
+    total_gap: r.totalGap,
     start: r.start.isoformat(),
     end: r.end ? r.end.isoformat() : null,
     holes_detail: r.pars.map((p, i) => {

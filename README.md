@@ -148,7 +148,11 @@ GitHub Pages by `.github/workflows/pages.yml`.
 - The export has a `Par` row before each round's player rows. Par comes from there.
 - A score of `0` means the hole was not played. Rounds with no scores are ignored, and partial rounds are left out of
   averages and trends.
-- Totals are the sum of the hole scores; the file's `Total` column is ignored because it can disagree with them.
+- Totals are the sum of the hole scores. The file's `Total` column is only a cross-check: when you scratch a hole
+  ("-" in the app), UDisc still writes a placeholder score in that hole's column but leaves it out of its own total. If
+  the holes add up to exactly one hole's score more than `Total`, that hole is treated as not played. If no single
+  hole explains the gap (or several could), nothing is dropped and the gap is reported instead. `get_round` shows
+  `scratched_holes` and `total_gap`, `export_status` counts the affected rounds, and the website notes them.
 - Hole numbers are only compared within one course layout.
 - The UDisc export has no throws, putts or penalty columns, so none are reported.
 - TechDisc throws are practice data and are not linked to rounds (the export has no course or round column).

@@ -7,6 +7,7 @@ import { parseCsv } from "../src/csv";
 import { buildPayload, render } from "../src/payload";
 import * as td from "../src/techdisc";
 import * as ud from "../src/udisc";
+import { analyze } from "../src/app";
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "tests", "fixtures");
 const fixture = (name: string): ud.CsvFile => ({ name, text: readFileSync(join(fixtures, name), "utf-8") });
@@ -209,5 +210,57 @@ describe("dashboard payload", () => {
     expect(html).not.toContain("<!--");
     const embedded = /type="application\/json">(.*)<\/script>/s.exec(html)?.[1] ?? "";
     expect(JSON.parse(embedded).player).toBe("</script><!-- x");
+  });
+});
+
+describe("scratched holes (the file's Total as a cross-check)", () => {
+  const header = sample.text.split("\n")[0];
+  const cells = (values: number[]) => [...values, ...Array(21 - values.length).fill("")].join(",");
+  const stamp = "2026-05-28 1852-0400,2026-05-28 1928-0400";
+  /** One Alex round of five par-3 holes whose Total column is `total` (a string, so it can be blank). */
+  const card = (scores: number[], total: string): ud.CsvFile[] => [
+    {
+      name: "x.csv",
+      text: [
+        header,
+        `Par,Test,Main,${stamp},15,,,${cells([3, 3, 3, 3, 3])}`,
+        `Alex,Test,Main,${stamp},${total},0,,${cells(scores)}`,
+      ].join("\n"),
+    },
+  ];
+  const round = (scores: number[], total: string) => ud.loadRounds(card(scores, total), "Alex");
+
+  it("drops a hole when the Total points at exactly one", () => {
+    const [r] = round([3, 4, 1, 3, 3], "13");
+    expect(r?.scratched).toEqual([3]);
+    expect(r?.totalGap).toBeNull();
+    expect(r?.played).toEqual([1, 2, 4, 5]);
+    expect([r?.total, r?.par, r?.toPar]).toEqual([13, 12, 1]);
+    expect(ud.roundDetail(r as ud.Round).scratched_holes).toEqual([3]);
+    expect(ud.roundDetail(r as ud.Round).holes_detail[2]?.score).toBeNull();
+    expect(round([3, 4, 1, 3, 3], "14")[0]?.scratched).toEqual([]); // the Total matches the holes
+  });
+
+  it("reports, rather than guesses, a gap that several holes or no hole could explain", () => {
+    const [several] = round([3, 4, 3, 3, 3], "13");
+    expect([several?.scratched, several?.totalGap, several?.total]).toEqual([[], 3, 16]);
+    const [none] = round([3, 4, 4, 3, 3], "10");
+    expect([none?.scratched, none?.totalGap, none?.total]).toEqual([[], 7, 17]);
+    const [high] = round([3, 4, 3, 3, 3], "20");
+    expect([high?.scratched, high?.totalGap, high?.total]).toEqual([[], -4, 16]);
+    const [missing] = round([3, 4, 1, 3, 3], "");
+    expect([missing?.scratched, missing?.totalGap, missing?.total]).toEqual([[], null, 14]);
+  });
+
+  it("drops a round whose only scored hole was scratched", () => {
+    expect(round([0, 0, 1, 0, 0], "0")).toEqual([]);
+  });
+
+  it("tells the visitor about it", () => {
+    expect(analyze(card([3, 4, 1, 3, 3], "13")).notes).toEqual([
+      "1 round had a scratched hole left out, because UDisc's own total did not count it (2026-05-28, hole 3)",
+    ]);
+    expect(analyze(card([3, 4, 3, 3, 3], "13")).notes[0]).toMatch(/has a UDisc total that does not match.*2026-05-28/);
+    expect(analyze([sample]).notes).toEqual([]);
   });
 });

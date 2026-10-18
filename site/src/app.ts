@@ -16,6 +16,8 @@ export interface Analysis {
   summary: string;
   /** Names of files that were neither a scorecard nor a throw export. */
   ignored: string[];
+  /** Things worth telling the visitor about their data, e.g. a scratched hole that was left out. */
+  notes: string[];
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -55,5 +57,21 @@ export function analyze(files: readonly CsvFile[], player: string | null = null)
   if (cards.length) parts.push(`${plural(rounds.length, "round")} for ${chosen ?? "nobody"}`);
   if (throwFiles.length) parts.push(`${plural(throws.length, "throw")}${isMain ? "" : " (hidden for other players)"}`);
   if (cards.length && !everyone.length) parts.push("no rounds with scores were found");
-  return { players, player: chosen, payload, summary: parts.join(", "), ignored };
+
+  const notes: string[] = [];
+  const scratched = rounds.filter((r) => r.scratched.length);
+  const gapped = rounds.filter((r) => r.totalGap !== null);
+  if (scratched.length) {
+    notes.push(
+      `${plural(scratched.length, "round")} had a scratched hole left out, because UDisc's own total did not count it ` +
+        `(${scratched.map((r) => `${r.start.day}, hole ${r.scratched.join(" and ")}`).join("; ")})`,
+    );
+  }
+  if (gapped.length) {
+    notes.push(
+      `${plural(gapped.length, "round")} ${gapped.length === 1 ? "has a" : "have a"} UDisc total that does not match the hole scores, ` +
+        `so the holes were used as they are (${gapped.map((r) => r.start.day).join(", ")})`,
+    );
+  }
+  return { players, player: chosen, payload, summary: parts.join(", "), ignored, notes };
 }

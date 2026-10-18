@@ -72,7 +72,21 @@ def synthetic_scorecards():
             if rng.random() < 0.04:
                 scores = [0] * n
             rating = "" if rng.random() < 0.3 else str(rng.randint(600, 1000))
-            lines.append(f"{q(player)},{q(course)},{q(layout)},{start},{end},99,0,{rating},{cells(scores)}")
+            # UDisc's own Total. A scratched hole keeps a placeholder in its column but is left out of the Total; the
+            # placeholder is sometimes 1 and sometimes the real score, so a gap points at one hole or at several.
+            played = [i for i, v in enumerate(scores) if v]
+            roll = rng.random()
+            if played and roll < 0.07:
+                j = rng.choice(played)
+                scores[j] = rng.choice([1, scores[j]])
+                total = str(sum(scores) - scores[j])
+            elif roll < 0.10:
+                total = ""  # no Total in the file
+            elif played and roll < 0.13:
+                total = str(sum(scores) + rng.choice([-3, -1, 2, 5]))  # a Total that does not fit any single hole
+            else:
+                total = str(sum(scores))
+            lines.append(f"{q(player)},{q(course)},{q(layout)},{start},{end},{total},0,{rating},{cells(scores)}")
         if k % 23 == 0:  # an overlapping export repeats the same round
             lines.append(lines[-1])
     return "\n".join(lines) + "\n"

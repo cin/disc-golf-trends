@@ -53,7 +53,10 @@ def export_status() -> dict:
         "export_file_updated": exported.date().isoformat() if exported else None,
         "export_age_days": age,
         "stale": age is not None and age > STALE_DAYS,
-        "note": "Data only includes rounds up to the last export; re-export from the UDisc app for newer rounds.",
+        "rounds_with_scratched_holes": sum(1 for r in rs if r.scratched),
+        "rounds_with_unexplained_total_gap": sum(1 for r in rs if r.total_gap is not None),
+        "note": "Data only includes rounds up to the last export; re-export from the UDisc app for newer rounds. A "
+        "scratched hole is left out when UDisc's own Total shows it did not count; get_round shows which.",
     }
 
 

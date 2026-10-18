@@ -70,7 +70,8 @@ function show(analysis: Analysis, collapsePick: boolean) {
   result.hidden = false;
 
   const ignored = analysis.ignored.length ? ` Ignored (not a UDisc or TechDisc export): ${analysis.ignored.join(", ")}.` : "";
-  status.textContent = `Showing ${analysis.summary}.${ignored}`;
+  const notes = analysis.notes.map((n) => ` Note: ${n}.`).join("");
+  status.textContent = `Showing ${analysis.summary}.${ignored}${notes}`;
   error.textContent = "";
 }
 

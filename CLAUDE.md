@@ -34,7 +34,7 @@ Dev dependencies are exact-pinned in `pyproject.toml` and `site/package.json` (a
 Invariants:
 
 - **Read-only.** No tool writes anywhere; every tool carries `readOnlyHint`. The server never contacts UDisc (its ToS prohibits scraping).
-- A hole score of `0` means not played; all-zero rounds are dropped; totals are summed from holes, never read from the `Total` column.
+- A hole score of `0` means not played; all-zero rounds are dropped; totals are summed from holes. The file's `Total` column is never used as the total, only as a cross-check in `_reconcile_total`: a scratched hole keeps a placeholder score in its column but UDisc leaves it out of `Total`, so when the hole sum exceeds `Total` by exactly one hole's score that hole is dropped (`Round.scratched`); any other gap is kept and reported (`Round.total_gap`), never guessed. The TypeScript port has the same rule (`reconcileTotal`).
 - Hole stats are keyed by (course, layout, hole).
 - Both exports may share one folder: files are identified by header (`PlayerName`+`StartDate` vs `speedMph`), never by name. `export_status` must not count the throw file's mtime.
 

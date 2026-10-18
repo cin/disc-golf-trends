@@ -4,12 +4,13 @@ Pure functions over plain data, no MCP or network code, so everything here is te
 
 Export layout (one row per player per round, preceded by a "Par" pseudo-player row for the same round):
 PlayerName,CourseName,LayoutName,StartDate,EndDate,Total,+/-,RoundRating,Hole1..HoleN
-Dates look like "2026-10-17 1735-0400".
+Dates look like "2026-10-17 1735-0400". Totals are summed from the hole scores; the file's Total column is only
+used to spot a scratched hole (see _reconcile_total).
 """
 
 import csv
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from statistics import mean
@@ -30,6 +31,8 @@ class Round:
     scores: list[int | None]
     pars: list[int | None]
     rating: int | None = None
+    scratched: list[int] = field(default_factory=list)  # holes (1-based) left out because UDisc's Total excludes them
+    total_gap: int | None = None  # hole sum minus the file's Total, when that could not be explained
 
     @property
     def round_id(self):
@@ -46,7 +49,7 @@ class Round:
 
     @property
     def total(self):
-        """Sum of the scored holes. The file's Total column is ignored: it can disagree with the hole scores."""
+        """Sum of the scored holes (the file's Total is not read here; see _reconcile_total for how it is used)."""
         done = [s for s in self.scores if s is not None]
         return sum(done) if done else None
 
@@ -90,6 +93,28 @@ def _to_score(raw):
 def _hole_columns(fieldnames):
     holes = [c for c in fieldnames if c.startswith("Hole") and c[4:].isdigit()]
     return sorted(holes, key=lambda c: int(c[4:]))
+
+
+def _reconcile_total(values, total):
+    """Use the file's Total to spot a scratched hole. Returns (values, scratched hole numbers, unexplained gap).
+
+    A hole the player skipped ("-" in the app) still holds a placeholder score in its column, but UDisc leaves it out
+    of its own Total. If the scored holes add up to exactly one hole's score more than Total, that hole did not
+    count, so it is dropped. If no hole or several holes could explain the gap, nothing is dropped and the gap is
+    returned so it can be reported. A missing Total, or one that matches, changes nothing."""
+    if total is None:
+        return values, [], None
+    scored = [(i, v) for i, v in enumerate(values) if v is not None]
+    gap = sum(v for _, v in scored) - total
+    if gap == 0:
+        return values, [], None
+    if gap > 0:
+        candidates = [i for i, v in scored if v == gap]
+        if len(candidates) == 1:
+            fixed = list(values)
+            fixed[candidates[0]] = None
+            return fixed, [candidates[0] + 1], None
+    return values, [], gap
 
 
 def _trim(values):
@@ -145,8 +170,11 @@ def load_rounds(csv_dir, player=None):
             elif any(v is not None for v in values):  # skip abandoned rounds with no scores at all
                 player_rows[(row["PlayerName"], *key)] = (row, values)
     rounds = []
-    for (name, course, layout, start), (row, values) in player_rows.items():
+    for (name, course, layout, start), (row, raw_values) in player_rows.items():
         if player and name.casefold() != player.casefold():
+            continue
+        values, scratched, gap = _reconcile_total(raw_values, _to_int(row.get("Total", "")))
+        if all(v is None for v in values):  # the only scored hole was a scratched one
             continue
         pars = par_rows.get((course, layout, start), [])
         holes = max(len(_trim(values)), len(_trim(pars)))
@@ -162,6 +190,8 @@ def load_rounds(csv_dir, player=None):
                 scores=scores,
                 pars=pars,
                 rating=_to_int(row.get("RoundRating", "")),
+                scratched=scratched,
+                total_gap=gap,
             )
         )
     rounds.sort(key=lambda r: (r.start, r.player))
@@ -216,6 +246,8 @@ def summarize_round(r):
 def round_detail(r):
     out = summarize_round(r)
     out["player"] = r.player
+    out["scratched_holes"] = r.scratched
+    out["total_gap"] = r.total_gap
     out["start"] = r.start.isoformat()
     out["end"] = r.end.isoformat() if r.end else None
     out["holes_detail"] = [
