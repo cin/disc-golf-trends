@@ -579,6 +579,44 @@ function heatmap(el, o) {
   el.append(svgEl);
 }
 
+// ---------- stacked share bars (one row per category, segments sum to 100%) ----------
+
+function shareBars(el, o) {
+  const labelW = 56, rowH = 30, top = 8, rightPad = 16;
+  const W = Math.max(280, el.clientWidth || 600);
+  const H = top + o.rows.length * rowH + 8;
+  const barW = W - labelW - rightPad;
+  const svgEl = sv('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'aria-label': o.aria });
+  const fills = o.kinds.map(k => divergingColor(k.tone, 1));
+  o.rows.forEach((r, ri) => {
+    const y = top + ri * rowH;
+    svgEl.append(sv('text', { class: 'tick', x: labelW - 8, y: y + rowH / 2, 'text-anchor': 'end', 'dominant-baseline': 'central' }, r.label));
+    let x = labelW;
+    const dim = o.hl && r.label !== o.hl;
+    o.kinds.forEach((k, ki) => {
+      const w = barW * r.shares[ki];
+      if (w <= 0) return;
+      const rgb = fills[ki];
+      const rect = sv('rect', {
+        class: 'bar' + (dim ? ' dim' : ''), x, y: y + 3, width: Math.max(0, w - 1), height: rowH - 6, rx: 3,
+        style: `fill:rgb(${rgb.join(',')})`, tabindex: 0,
+        'aria-label': `${r.label}, ${k.name}: ${(r.shares[ki] * 100).toFixed(1)} percent of holes`,
+      });
+      const show = (px, py) => { rect.classList.add('hot'); tip.show(`${r.label} · ${k.name}`, [['Share of holes', (r.shares[ki] * 100).toFixed(1) + '%'], ['Holes', String(r.counts[ki])]], px, py); };
+      const hide = () => { rect.classList.remove('hot'); tip.hide(); };
+      rect.addEventListener('pointermove', ev => show(ev.clientX, ev.clientY));
+      rect.addEventListener('pointerleave', hide);
+      rect.addEventListener('focus', ev => { const [px, py] = focusPoint(ev.target); show(px, py); });
+      rect.addEventListener('blur', hide);
+      svgEl.append(rect);
+      if (w >= 34) svgEl.append(sv('text', { class: 'cell-text', x: x + w / 2, y: y + rowH / 2, style: `fill:${luminance(rgb) > 0.55 ? '#0b0b0b' : '#ffffff'}` }, Math.round(r.shares[ki] * 100) + '%'));
+      x += w;
+    });
+  });
+  el.append(h('div', { class: 'legend' }, o.kinds.map((k, ki) => h('span', null, h('i', { style: `background:rgb(${fills[ki].join(',')});border:1px solid var(--axis)` }), k.name))));
+  el.append(svgEl);
+}
+
 // ---------- cards, tables, tiles ----------
 
 function makeTable(head, rows, numFrom = 1, tall = false) {
@@ -760,6 +798,23 @@ function renderScoring() {
     el => columnChart(el, { cats, series: [{ name: 'Birdies or better' }, { name: 'Blow-ups' }], fmt: v => v.toFixed(1), yTitle: 'Holes per round', colorFor: (c, ci, si) => 'f' + (si + 1) + (state.hl && c.label !== state.hl ? ' dim' : ''), aria: 'Grouped columns of birdies and blow-ups per round by season' }),
     { head: ['Season', 'Birdies per round', 'Blow-ups per round', 'Rounds'], rows: cats.map(c => [c.label, c.vals[0].toFixed(1), c.vals[1].toFixed(1), c.rows[2][1]]) });
 
+  // how holes were scored relative to par, by season
+  const kinds = [
+    { name: 'Birdie or better', tone: -1, test: o => o < 0 },
+    { name: 'Par', tone: 0, test: o => o === 0 },
+    { name: 'Bogey', tone: 0.34, test: o => o === 1 },
+    { name: 'Double bogey', tone: 0.67, test: o => o === 2 },
+    { name: 'Triple or worse', tone: 1, test: o => o >= 3 },
+  ];
+  const dist = seasons.map(sn => {
+    const holes = full.filter(r => r.d.startsWith(sn)).flatMap(r => r.s.map((s, i) => [s, r.q[i]])).filter(([s, q]) => s != null && q != null);
+    const counts = kinds.map(k => holes.filter(([s, q]) => k.test(s - q)).length);
+    return { label: sn, counts, shares: counts.map(c => c / holes.length), holes: holes.length };
+  });
+  card('dist', 'How holes were scored', `${scope} · share of holes by season · complete rounds`,
+    el => shareBars(el, { rows: dist, kinds, hl: state.hl, aria: 'Stacked bars of the share of holes at each score relative to par, by season' }),
+    { head: ['Season', ...kinds.map(k => k.name), 'Holes'], rows: dist.map(d => [d.label, ...d.shares.map(s => (s * 100).toFixed(1) + '%'), String(d.holes)]) });
+
   // courses table: date range only
   const inRange = complete(D.rounds.filter(r => inWin(r.d, win)));
   const groups = new Map();
@@ -833,7 +888,7 @@ function renderHoles(costOnly) {
 function renderThrows() {
   const win = windowFor(state.range);
   const ts = D.throws.filter(t => inWin(t.d, win));
-  if (!ts.length) { view.append(h('div', { class: 'empty' }, D.throws.length ? 'No throws in this date range.' : 'No TechDisc throws found. Set TECHDISC_CSV_DIR and regenerate.')); return; }
+  if (!ts.length) { view.append(h('div', { class: 'empty' }, D.throws.length ? 'No throws in this date range.' : D.note ? 'TechDisc throws are only shown on your own dashboard.' : 'No TechDisc throws found. Set TECHDISC_CSV_DIR and regenerate.')); return; }
   const sp = ts.map(t => t.sp).filter(v => v != null), di = ts.map(t => t.di).filter(v => v != null);
   const months = periodList(ts, 'month');
   view.append(h('div', { class: 'kpis' },
@@ -872,7 +927,7 @@ function renderShell() {
   syncThemeMenu();
   document.getElementById('title').textContent = `${D.player}’s disc golf trends`;
   document.getElementById('subtitle').textContent = D.through
-    ? `${D.rounds.length} rounds through ${fmtDate(D.through)} · generated from your UDisc and TechDisc exports, on this computer only`
+    ? `${D.rounds.length} rounds through ${fmtDate(D.through)} · ${D.note ? D.note + ' · ' : ''}generated from your UDisc${D.note ? '' : ' and TechDisc'} export, on this computer only`
     : 'No rounds found.';
   const f = document.getElementById('filters');
   const courseSel = h('select', { id: 'course', onchange: ev => { state.course = ev.target.value; render(); } },

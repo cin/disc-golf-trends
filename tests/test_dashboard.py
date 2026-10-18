@@ -90,6 +90,26 @@ def test_main_writes_file_from_env(data_dir, tmp_path_factory, monkeypatch):
     assert (len(payload["rounds"]), len(payload["throws"])) == (5, 7)
 
 
+def test_main_player_option_builds_another_players_dashboard(data_dir, tmp_path_factory, monkeypatch):
+    out = tmp_path_factory.mktemp("out") / "sam.html"
+    monkeypatch.setenv("UDISC_CSV_DIR", str(data_dir))
+    monkeypatch.setenv("TECHDISC_CSV_DIR", str(data_dir))
+    monkeypatch.setenv("UDISC_PLAYER", "Alex")
+    srv._cache.update(key=None, rounds=None)
+    srv._throw_cache.update(key=None, throws=None)
+    dashboard.main(["--out", str(out), "--player", "sam"])
+    payload = embedded(out.read_text(encoding="utf-8"))
+    assert (payload["player"], len(payload["rounds"]), payload["throws"]) == ("Sam", 1, [])
+    assert payload["note"]
+    with pytest.raises(SystemExit):
+        dashboard.main(["--out", str(out), "--player", "nobody"])
+
+
+def test_player_slug_is_filename_safe():
+    assert dashboard._slug("Sam O'Neil") == "sam-o-neil"
+    assert dashboard._slug("  ") == "player"
+
+
 def test_main_works_without_techdisc(data_dir, tmp_path_factory, monkeypatch):
     out = tmp_path_factory.mktemp("out") / "dash.html"
     monkeypatch.setenv("UDISC_CSV_DIR", str(data_dir))

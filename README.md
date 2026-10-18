@@ -87,7 +87,8 @@ Example questions: "Which holes at my home course cost me the most strokes?", "H
 
 One self-contained HTML file with three tabs, opened by double-clicking it: **Scoring** (strokes over par and round
 rating by month, quarter or season, with the best and worst periods ringed; every round as a dot, with new personal
-bests at a course in blue; the three costliest holes highlighted; birdies and blow-ups per round; a courses table),
+bests at a course in blue; the three costliest holes highlighted; birdies and blow-ups per round; the share of holes
+at each score by season; a courses table),
 **Holes** (where the strokes go on a chosen course, and a hole-by-season heatmap) and **Throws** (TechDisc speed and
 distance trends). Filters at the top scope the whole page by course and date range; "Highlight season" shades one
 season on the charts and dims the others without filtering anything. Every chart has a table view.
@@ -97,7 +98,11 @@ season on the charts and dims the others without filtering anything. Every chart
 on a dark one). `?theme=system`, `?theme=mocha`, `?theme=dark` or `?theme=light` in the address picks one; dark or
 light only applies when it is the opposite of the system look. It makes no network requests and has no animation. Re-run the command after each new export.
 
-The file embeds your real rounds, so `dashboards/` is git-ignored. Only your own rows are included.
+`--player "Name"` builds the same dashboard for another player in your export (name matched exactly, ignoring case),
+written to `dashboards\udisc-dashboard-name.html`. The export only holds rounds you scored together, so that
+dashboard covers those rounds, and your TechDisc throws are left out.
+
+The file embeds real rounds, so `dashboards/` is git-ignored. Each file holds one player's rows.
 
 ## Data notes
 
