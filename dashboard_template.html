@@ -58,6 +58,24 @@
   --pole-under: #3987e5;
   --pole-over: #e66767;
 }
+/* Mocha: Catppuccin Mocha. Beats the OS dark rule above on specificity, so it wins under either OS setting. */
+:root[data-theme="mocha"] {
+  color-scheme: dark;
+  --page: #181825;
+  --surface-1: #1e1e2e;
+  --text-primary: #cdd6f4;
+  --text-secondary: #a6adc8;
+  --text-muted: #7f849c;
+  --grid: #313244;
+  --axis: #45475a;
+  --border: rgba(205, 214, 244, 0.10);
+  --series-1: #89b4fa;
+  --series-2: #fab387;
+  --deemph: #585b70;
+  --neutral: #313244;
+  --pole-under: #89b4fa;
+  --pole-over: #f38ba8;
+}
 * { box-sizing: border-box; }
 body {
   margin: 0;
@@ -68,6 +86,8 @@ body {
 main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
 h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
 .sub { color: var(--text-secondary); margin: 0 0 20px; font-size: 14px; }
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px 24px; flex-wrap: wrap; }
+.theme { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 13px; }
 .filters {
   display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center;
   padding: 12px 0; margin-bottom: 8px;
@@ -147,8 +167,15 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 </head>
 <body>
 <main>
-  <h1 id="title">Disc golf trends</h1>
-  <p class="sub" id="subtitle"></p>
+  <div class="head">
+    <div>
+      <h1 id="title">Disc golf trends</h1>
+      <p class="sub" id="subtitle"></p>
+    </div>
+    <label class="theme" for="theme">Theme
+      <select id="theme" aria-label="Theme"><option value="system">System</option><option value="mocha">Mocha</option><option value="dark">Dark</option></select>
+    </label>
+  </div>
   <div id="err"></div>
   <div class="filters" id="filters"></div>
   <div class="tabs" id="tabs" role="tablist"></div>
@@ -224,7 +251,32 @@ const inWin = (iso, w) => { const t = parseDay(iso); return t > w.from && t <= w
 
 const hashTab = location.hash.slice(1);
 const params = new URLSearchParams(location.search);
-if (params.get('theme') === 'dark' || params.get('theme') === 'light') document.documentElement.dataset.theme = params.get('theme');
+
+// ---------- themes: System (follows the OS) by default, Mocha (Catppuccin), or the opposite of the OS look ----------
+
+const THEME_KEY = 'dgj-theme';
+const THEME_NAMES = ['system', 'mocha', 'light', 'dark'];
+const osDark = () => !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+const oppositeTheme = () => (osDark() ? 'light' : 'dark');
+const currentTheme = () => document.documentElement.getAttribute('data-theme') || 'system';
+function applyTheme(name, save) {
+  // Dark or Light only takes effect when it is the opposite of the OS look; the OS's own look is just System.
+  const theme = name === 'mocha' || name === oppositeTheme() ? name : 'system';
+  if (theme === 'system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', theme);
+  if (save) { try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* storage may be blocked */ } }
+}
+function syncThemeMenu() {
+  const menu = document.getElementById('theme');
+  const opposite = oppositeTheme();
+  menu.options[2].value = opposite;
+  menu.options[2].textContent = opposite === 'dark' ? 'Dark' : 'Light';
+  menu.value = currentTheme();
+}
+let savedTheme = 'system';
+try { savedTheme = localStorage.getItem(THEME_KEY) || 'system'; } catch (e) { /* storage may be blocked */ }
+const askedTheme = params.get('theme'); // ?theme=mocha|dark|light|system makes (and remembers) that choice
+if (THEME_NAMES.includes(askedTheme)) applyTheme(askedTheme, true); else applyTheme(savedTheme, false);
 
 const state = {
   tab: ['scoring', 'holes', 'throws'].includes(hashTab) ? hashTab : 'scoring',
@@ -817,6 +869,7 @@ function renderThrows() {
 // ---------- shell ----------
 
 function renderShell() {
+  syncThemeMenu();
   document.getElementById('title').textContent = `${D.player}’s disc golf trends`;
   document.getElementById('subtitle').textContent = D.through
     ? `${D.rounds.length} rounds through ${fmtDate(D.through)} · generated from your UDisc and TechDisc exports, on this computer only`
@@ -855,7 +908,10 @@ function render() {
 
 let resizeTimer;
 new ResizeObserver(() => { cancelAnimationFrame(resizeTimer); resizeTimer = requestAnimationFrame(render); }).observe(document.querySelector('main'));
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
+document.getElementById('theme').addEventListener('change', ev => { applyTheme(ev.target.value, true); render(); });
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { applyTheme(currentTheme(), false); render(); });
+}
 render();
 })();
 </script>

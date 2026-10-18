@@ -64,6 +64,14 @@ def test_render_embeds_data_and_escapes_script_end(data_dir):
     assert embedded(html)["player"] == "</script><b>x"
 
 
+def test_template_offers_system_mocha_and_opposite_themes():
+    source = dashboard.TEMPLATE.read_text(encoding="utf-8")
+    assert 'id="theme"' in source and 'value="system"' in source and 'value="mocha"' in source
+    assert ':root[data-theme="mocha"]' in source and "#cdd6f4" in source  # Catppuccin Mocha text colour
+    assert ":root:where(:not([data-theme=" in source  # System follows the OS unless a light theme is forced
+    assert "?theme=" in source or "params.get('theme')" in source  # a URL can pick the theme
+
+
 def test_template_renders_text_without_innerhtml():
     source = dashboard.TEMPLATE.read_text(encoding="utf-8")
     assert "innerHTML" not in source  # labels come from CSV data, so they must only go in as text

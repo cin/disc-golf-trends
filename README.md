@@ -89,8 +89,12 @@ rating by month, quarter or season, with the best and worst periods ringed; ever
 bests at a course in blue; the three costliest holes highlighted; birdies and blow-ups per round; a courses table),
 **Holes** (where the strokes go on a chosen course, and a hole-by-season heatmap) and **Throws** (TechDisc speed and
 distance trends). Filters at the top scope the whole page by course and date range; "Highlight season" shades one
-season on the charts and dims the others without filtering anything. Every chart has a table view, and it follows
-your light or dark setting. It makes no network requests and has no animation. Re-run the command after each new export.
+season on the charts and dims the others without filtering anything. Every chart has a table view.
+
+**Themes** (menu at the top right, remembered in the browser): *System* follows your light or dark setting,
+*Mocha* is Catppuccin Mocha, and the third entry is the opposite of your system look (Dark on a light system, Light
+on a dark one). `?theme=system`, `?theme=mocha`, `?theme=dark` or `?theme=light` in the address picks one; dark or
+light only applies when it is the opposite of the system look. It makes no network requests and has no animation. Re-run the command after each new export.
 
 The file embeds your real rounds, so `dashboards/` is git-ignored. Only your own rows are included.
 
