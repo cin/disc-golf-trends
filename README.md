@@ -83,10 +83,12 @@ Example questions: "Which holes at Gatewood cost me the most strokes?", "How has
 ```
 
 One self-contained HTML file with three tabs, opened by double-clicking it: **Scoring** (strokes over par and round
-rating by month, quarter or season; birdies and blow-ups per round; a courses table), **Holes** (where the strokes
-go on a chosen course, and a hole-by-season heatmap) and **Throws** (TechDisc speed and distance trends). Filters at
-the top scope the whole page by course and date range, every chart has a table view, and it follows your light or
-dark setting. It makes no network requests and has no animation. Re-run the command after each new export.
+rating by month, quarter or season, with the best and worst periods ringed; every round as a dot, with new personal
+bests at a course in blue; the three costliest holes highlighted; birdies and blow-ups per round; a courses table),
+**Holes** (where the strokes go on a chosen course, and a hole-by-season heatmap) and **Throws** (TechDisc speed and
+distance trends). Filters at the top scope the whole page by course and date range; "Highlight season" shades one
+season on the charts and dims the others without filtering anything. Every chart has a table view, and it follows
+your light or dark setting. It makes no network requests and has no animation. Re-run the command after each new export.
 
 The file embeds your real rounds, so `dashboards/` is git-ignored. Only your own rows are included.
 

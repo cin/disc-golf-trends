@@ -117,6 +117,11 @@ svg { display: block; max-width: 100%; }
 .f2 { fill: var(--series-2); }
 .fgray { fill: var(--deemph); }
 .hit { fill: transparent; }
+.band { fill: var(--series-1); opacity: 0.10; }
+.halo { fill: none; stroke: var(--text-primary); stroke-width: 2; }
+.mark-label { fill: var(--text-primary); font-size: 12px; font-weight: 600; }
+.dim { opacity: 0.35; }
+.table-wrap.tall { max-height: 360px; overflow: auto; }
 .bar.hot { stroke: var(--text-primary); stroke-width: 1.5; }
 .cell-text { font-size: 11px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0 8px; font-size: 13px; color: var(--text-secondary); }
@@ -227,6 +232,7 @@ const state = {
   range: params.get('range') || 'all',
   grain: 'month',
   holeMetric: 'total',
+  hl: params.get('hl') || '', // season to emphasize (view only; does not filter anything)
   tables: new Set(),
 };
 const courseKey = r => r.c + '|' + r.l;
@@ -304,6 +310,11 @@ function lineChart(el, o) {
   const y = yScale(f, ticks);
   const x = i => f.m.l + (n <= 1 ? f.pw / 2 : (i * f.pw) / (n - 1));
   drawYAxis(f, ticks, y, o.zero, o.yTitle);
+  if (o.band) {
+    const step = n <= 1 ? f.pw : f.pw / (n - 1);
+    const bx0 = Math.max(f.m.l, x(o.band[0]) - step / 2), bx1 = Math.min(f.W - f.m.r, x(o.band[1]) + step / 2);
+    f.svgEl.append(sv('rect', { class: 'band', x: bx0, y: f.m.t, width: Math.max(0, bx1 - bx0), height: f.ph }));
+  }
   for (const t of o.xTicks) f.svgEl.append(sv('text', { class: 'tick', x: x(t.i), y: f.H - 10, 'text-anchor': 'middle' }, t.label));
 
   let seg = [];
@@ -332,6 +343,13 @@ function lineChart(el, o) {
     markers.push({ i, dot });
     f.svgEl.append(dot);
   });
+  for (const mk of o.marks || []) {
+    const p = o.points[mk.i], cx = x(mk.i), cy = y(p.y);
+    f.svgEl.append(sv('circle', { class: 'halo', cx, cy, r: 8 }));
+    const right = cx > f.W - f.m.r - 90;
+    const ly = Math.min(f.H - f.m.b - 8, Math.max(f.m.t + 8, cy + mk.dy));
+    f.svgEl.append(sv('text', { class: 'mark-label', x: right ? cx - 12 : cx + 12, y: ly, 'text-anchor': right ? 'end' : 'start', 'dominant-baseline': 'central' }, mk.label));
+  }
   const last = markers[markers.length - 1];
   if (last) f.svgEl.append(sv('text', { class: 'endlabel', x: x(last.i) + 10, y: y(o.points[last.i].y), 'dominant-baseline': 'central' }, o.fmt(o.points[last.i].y)));
 
@@ -345,6 +363,54 @@ function lineChart(el, o) {
   });
   hit.addEventListener('pointerleave', () => { tip.hide(); cross.style.display = 'none'; });
   f.svgEl.append(hit);
+  el.append(f.svgEl);
+}
+
+// ---------- scatter over time (one dot per round, emphasis on highlighted dots) ----------
+
+function scatterChart(el, o) {
+  const f = frame(el, { ...o, marginRight: 16 });
+  const pts = o.points;
+  if (!pts.length) { el.append(h('div', { class: 'empty' }, 'No data for this selection.')); return; }
+  const ticks = niceTicks(Math.min(0, ...pts.map(p => p.y)), Math.max(0, ...pts.map(p => p.y)));
+  const y = yScale(f, ticks);
+  const t0 = Math.min(...pts.map(p => p.t)), t1 = Math.max(...pts.map(p => p.t));
+  const x = t => f.m.l + (t1 === t0 ? f.pw / 2 : ((t - t0) / (t1 - t0)) * f.pw);
+  drawYAxis(f, ticks, y, true, o.yTitle);
+  if (o.band) {
+    const bx0 = Math.max(f.m.l, x(o.band[0])), bx1 = Math.min(f.W - f.m.r, x(o.band[1]));
+    if (bx1 > bx0) f.svgEl.append(sv('rect', { class: 'band', x: bx0, y: f.m.t, width: bx1 - bx0, height: f.ph }));
+  }
+  for (let yr = new Date(t0).getUTCFullYear(); yr <= new Date(t1).getUTCFullYear(); yr++) {
+    const a = Math.max(t0, Date.UTC(yr, 0, 1)), b = Math.min(t1, Date.UTC(yr, 11, 31));
+    f.svgEl.append(sv('text', { class: 'tick', x: (x(a) + x(b)) / 2, y: f.H - 10, 'text-anchor': 'middle' }, String(yr)));
+  }
+  const dots = [];
+  const draw = p => {
+    const dot = sv('circle', {
+      class: p.hl ? 'dot f1 bar' : 'fgray bar', cx: x(p.t), cy: y(p.y), r: p.hl ? 5 : 4,
+      tabindex: p.hl ? 0 : null, 'aria-label': `${p.title}: ${p.rows.map(r => r.join(' ')).join(', ')}`,
+      onfocus: ev => { const [cx, cy] = focusPoint(ev.target); tip.show(p.title, p.rows, cx, cy); },
+      onblur: () => tip.hide(),
+    });
+    dots.push({ p, dot });
+    f.svgEl.append(dot);
+  };
+  pts.filter(p => !p.hl).forEach(draw);
+  pts.filter(p => p.hl).forEach(draw);
+  const hit = sv('rect', { class: 'hit', x: f.m.l - 6, y: f.m.t - 6, width: f.pw + 12, height: f.ph + 12 });
+  let hot = null;
+  hit.addEventListener('pointermove', ev => {
+    const box = hit.getBoundingClientRect();
+    const px = ev.clientX - box.left + f.m.l - 6, py = ev.clientY - box.top + f.m.t - 6;
+    let best = null, bd = 28 * 28;
+    for (const d of dots) { const dx = x(d.p.t) - px, dy = y(d.p.y) - py, dd = dx * dx + dy * dy; if (dd < bd) { bd = dd; best = d; } }
+    if (hot !== best) { if (hot) hot.dot.classList.remove('hot'); hot = best; if (hot) hot.dot.classList.add('hot'); }
+    if (best) tip.show(best.p.title, best.p.rows, ev.clientX, ev.clientY); else tip.hide();
+  });
+  hit.addEventListener('pointerleave', () => { if (hot) hot.dot.classList.remove('hot'); hot = null; tip.hide(); });
+  f.svgEl.append(hit);
+  if (o.legend) el.append(h('div', { class: 'legend' }, o.legend.map(([cls, label]) => h('span', null, h('i', { style: `background:var(${cls})` }), label))));
   el.append(f.svgEl);
 }
 
@@ -447,6 +513,7 @@ function heatmap(el, o) {
       svgEl.append(sv('text', { class: 'cell-text', x: x + cellW / 2, y: y + cellH / 2, style: `fill:${luminance(rgb) > 0.55 ? '#0b0b0b' : '#ffffff'}` }, fmtPar(cell.v, 2)));
     });
   });
+  if (o.hlCol >= 0) svgEl.append(sv('rect', { class: 'halo', x: labelW + o.hlCol * cellW, y: top - 2, width: cellW, height: o.rows.length * cellH + 4, rx: 4 }));
   // scale legend: -scale ... par ... +scale
   const ly = top + o.rows.length * cellH + 14, steps = 9, sw = 26;
   const x0 = labelW;
@@ -462,8 +529,8 @@ function heatmap(el, o) {
 
 // ---------- cards, tables, tiles ----------
 
-function makeTable(head, rows, numFrom = 1) {
-  return h('div', { class: 'table-wrap' }, h('table', null,
+function makeTable(head, rows, numFrom = 1, tall = false) {
+  return h('div', { class: 'table-wrap' + (tall ? ' tall' : '') }, h('table', null,
     h('thead', null, h('tr', null, head.map((t, i) => h('th', { class: i >= numFrom ? 'num' : '' }, t)))),
     h('tbody', null, rows.map(r => h('tr', null, r.map((c, i) => h('td', { class: i >= numFrom ? 'num' : '' }, c)))))));
 }
@@ -481,7 +548,7 @@ function card(id, title, subtitle, draw, tableData, tools) {
       h('div', { class: 'card-tools' }, tools || null, tableData ? toggle : null)),
     body);
   view.append(c);
-  if (showTable && tableData) body.append(makeTable(tableData.head, tableData.rows, tableData.numFrom ?? 1));
+  if (showTable && tableData) body.append(makeTable(tableData.head, tableData.rows, tableData.numFrom ?? 1, !!tableData.tall));
   else draw(body);
   return c;
 }
@@ -588,12 +655,46 @@ function renderScoring() {
   const tableOf = (pts, fmt, name) => ({ head: ['Period', name, 'Rounds'], rows: periods.map((k, i) => [periodLabel(k, state.grain), pts[i].y == null ? '–' : fmt(pts[i].y), String(byPeriod.get(k).length)]) });
   const scope = courseLabel(state.course);
 
-  card('trend', 'Strokes over par', `${scope} · lower is better · complete rounds only`,
-    el => lineChart(el, { points: parPts, n: periods.length, xTicks: xTicksFor(periods, state.grain), zero: true, fmt: v => fmtPar(v), yTitle: 'Strokes vs par', aria: 'Line chart of average strokes over par per period' }),
+  // emphasis: shade the highlighted season, and ring the best and worst periods (only periods with 3+ rounds)
+  const hlIdx = state.hl ? periods.map((k, i) => (k.startsWith(state.hl) ? i : -1)).filter(i => i >= 0) : [];
+  const band = hlIdx.length ? [hlIdx[0], hlIdx[hlIdx.length - 1]] : null;
+  const eligible = parPts.map((p, i) => ({ i, y: p.y, n: byPeriod.get(periods[i]).length })).filter(e => e.y != null && e.n >= 3);
+  const marks = [];
+  if (eligible.length > 1) {
+    const lo = eligible.reduce((a, b) => (b.y < a.y ? b : a)), hi = eligible.reduce((a, b) => (b.y > a.y ? b : a));
+    marks.push({ i: lo.i, dy: 18, label: `Best ${fmtPar(lo.y)} · ${periodLabel(periods[lo.i], state.grain)}` });
+    marks.push({ i: hi.i, dy: -18, label: `Worst ${fmtPar(hi.y)} · ${periodLabel(periods[hi.i], state.grain)}` });
+  }
+  card('trend', 'Strokes over par', `${scope} · lower is better · best and worst among periods with 3+ rounds`,
+    el => lineChart(el, { points: parPts, n: periods.length, xTicks: xTicksFor(periods, state.grain), zero: true, fmt: v => fmtPar(v), yTitle: 'Strokes vs par', band, marks, aria: 'Line chart of average strokes over par per period' }),
     tableOf(parPts, v => fmtPar(v), 'Avg vs par'), grainTools);
+
+  // personal bests: a round that beat every earlier round at the same course and layout (judged over all history)
+  const history = complete(D.rounds.filter(r => state.course === 'all' || courseKey(r) === state.course))
+    .sort((a, b) => (a.d === b.d ? (a.i < b.i ? -1 : 1) : a.d < b.d ? -1 : 1));
+  const bestSoFar = new Map(), prevBest = new Map();
+  for (const r of history) {
+    const k = courseKey(r);
+    if (bestSoFar.has(k) && r.tp < bestSoFar.get(k)) prevBest.set(r, bestSoFar.get(k));
+    if (!bestSoFar.has(k) || r.tp < bestSoFar.get(k)) bestSoFar.set(k, r.tp);
+  }
+  const roundPts = full.map(r => ({
+    t: parseDay(r.d), y: r.tp, hl: prevBest.has(r), r, title: `${r.c}, ${fmtDate(r.d)}`,
+    rows: [['Strokes vs par', fmtPar(r.tp, 0)], ['Layout', r.l], ['Rating', r.r == null ? '–' : String(r.r)], ...(prevBest.has(r) ? [['New personal best', `was ${fmtPar(prevBest.get(r), 0)}`]] : [])],
+  }));
+  card('rounds', 'Every round', `${scope} · one dot per round · blue dots beat your previous best at that course`,
+    el => scatterChart(el, {
+      points: roundPts, band: state.hl ? [Date.UTC(+state.hl, 0, 1), Date.UTC(+state.hl, 11, 31)] : null, yTitle: 'Strokes vs par',
+      legend: [['--series-1', 'New personal best at that course'], ['--deemph', 'Other rounds']], aria: 'Scatter of every round by date, personal bests highlighted',
+    }),
+    { head: ['Date', 'Course', 'Layout', 'Vs par', 'Rating', 'Personal best'], numFrom: 3, tall: true,
+      rows: [...roundPts].reverse().map(p => [fmtDate(p.r.d), p.r.c, p.r.l, fmtPar(p.r.tp, 0), p.r.r == null ? '–' : String(p.r.r), p.hl ? `Yes (was ${fmtPar(prevBest.get(p.r), 0)})` : '']) });
+
   card('rating', 'Round rating', `${scope} · higher is better`,
-    el => lineChart(el, { points: ratingPts, n: periods.length, xTicks: xTicksFor(periods, state.grain), zero: false, fmt: v => fmtInt(v), yTitle: 'Rating', aria: 'Line chart of average round rating per period' }),
+    el => lineChart(el, { points: ratingPts, n: periods.length, xTicks: xTicksFor(periods, state.grain), zero: false, fmt: v => fmtInt(v), yTitle: 'Rating', band, aria: 'Line chart of average round rating per period' }),
     tableOf(ratingPts, v => fmtInt(v), 'Avg rating'));
+
+  if (state.course !== 'all') renderHoles(true); // the costliest-holes highlight, same card as on the Holes tab
 
   // birdies and blow-ups per round, by season
   const seasons = periodList(full, 'season');
@@ -604,7 +705,7 @@ function renderScoring() {
     return { label: sn, vals: [bd, bl], rows: [['Birdies per round', bd.toFixed(1)], ['Blow-ups per round', bl.toFixed(1)], ['Rounds', String(rs.length)]] };
   });
   card('bb', 'Birdies and blow-ups per round', `${scope} · by season · a blow-up is 2+ over par`,
-    el => columnChart(el, { cats, series: [{ name: 'Birdies or better' }, { name: 'Blow-ups' }], fmt: v => v.toFixed(1), yTitle: 'Holes per round', aria: 'Grouped columns of birdies and blow-ups per round by season' }),
+    el => columnChart(el, { cats, series: [{ name: 'Birdies or better' }, { name: 'Blow-ups' }], fmt: v => v.toFixed(1), yTitle: 'Holes per round', colorFor: (c, ci, si) => 'f' + (si + 1) + (state.hl && c.label !== state.hl ? ' dim' : ''), aria: 'Grouped columns of birdies and blow-ups per round by season' }),
     { head: ['Season', 'Birdies per round', 'Blow-ups per round', 'Rounds'], rows: cats.map(c => [c.label, c.vals[0].toFixed(1), c.vals[1].toFixed(1), c.rows[2][1]]) });
 
   // courses table: date range only
@@ -632,7 +733,7 @@ function holeCells(rs) {
   return byHole;
 }
 
-function renderHoles() {
+function renderHoles(costOnly) {
   if (state.course === 'all') { view.append(h('div', { class: 'empty' }, 'Pick a course in the filter above to see its holes.')); return; }
   const win = windowFor(state.range);
   const rs = roundsSlice(win, state.course);
@@ -654,7 +755,7 @@ function renderHoles() {
     };
   });
   const metricTools = segmented([{ id: 'total', label: 'Total strokes' }, { id: 'avg', label: 'Per round' }], state.holeMetric, m => { state.holeMetric = m; render(); }, 'Metric');
-  card('holes', 'Where the strokes go', `${scope} · strokes against par on each hole · top 3 highlighted`,
+  card(costOnly ? 'holes-s' : 'holes', 'Where the strokes go', `${scope} · strokes against par on each hole · top 3 highlighted`,
     el => columnChart(el, {
       cats, series: [{ name: state.holeMetric === 'total' ? 'Total strokes vs par' : 'Average vs par' }], signed: true,
       fmt: v => (state.holeMetric === 'total' ? fmtPar(v, 0) : fmtPar(v, 2)),
@@ -663,6 +764,7 @@ function renderHoles() {
     }),
     { head: ['Hole', 'Par', 'Rounds', 'Total vs par', 'Avg vs par', 'Blow-ups', 'Birdies+', 'Worst'],
       rows: holes.map(hn => { const cs = byHole.get(hn), over = cs.map(c => c.over); return [String(hn), String(cs[cs.length - 1].q), String(cs.length), fmtPar(total(hn), 0), fmtPar(avg(hn), 2), String(over.filter(o => o >= 2).length), String(over.filter(o => o < 0).length), String(Math.max(...cs.map(c => c.s)))]; }) } , metricTools);
+  if (costOnly) return;
 
   const years = [...new Set(rs.map(r => r.d.slice(0, 4)))].sort();
   const cells = holes.map(hn => years.map(yr => {
@@ -672,7 +774,7 @@ function renderHoles() {
     return { v, rows: [['Average vs par', fmtPar(v, 2)], ['Average score', mean(cs.map(c => c.s)).toFixed(2)], ['Blow-ups', String(cs.filter(c => c.over >= 2).length)], ['Rounds', String(cs.length)]] };
   }));
   card('heat', 'Each hole, season by season', `${scope} · average strokes against par · blue is under par, red is over`,
-    el => heatmap(el, { rows: holes.map(String), cols: years, cells, scale: 1, rowLabel: 'Hole', aria: 'Heatmap of average strokes against par by hole and season' }),
+    el => heatmap(el, { rows: holes.map(String), cols: years, cells, scale: 1, hlCol: years.indexOf(state.hl), rowLabel: 'Hole', aria: 'Heatmap of average strokes against par by hole and season' }),
     { head: ['Hole', ...years], rows: holes.map((hn, ri) => [String(hn), ...cells[ri].map(c => (c ? fmtPar(c.v, 2) : '–'))]) });
 }
 
@@ -725,8 +827,14 @@ function renderShell() {
     D.courses.map(c => h('option', { value: c.key }, `${c.course} · ${c.layout} (${c.n})`)));
   courseSel.value = state.course;
   courseSel.disabled = state.tab === 'throws';
+  const seasons = [...new Set(D.rounds.map(r => r.d.slice(0, 4)))].sort();
+  const hlSel = h('select', { id: 'hl', onchange: ev => { state.hl = ev.target.value; render(); } },
+    h('option', { value: '' }, 'None'), seasons.map(s => h('option', { value: s }, s)));
+  hlSel.value = state.hl;
+  hlSel.disabled = state.tab === 'throws';
   f.replaceChildren(
     h('span', null, h('label', { for: 'course' }, 'Course'), courseSel),
+    h('span', null, h('label', { for: 'hl' }, 'Highlight season'), hlSel),
     h('span', null, h('label', null, 'Dates'), segmented(RANGES, state.range, r => { state.range = r; render(); }, 'Date range')));
   const tabs = document.getElementById('tabs');
   tabs.replaceChildren(...[['scoring', 'Scoring'], ['holes', 'Holes'], ['throws', 'Throws']].map(([id, label]) =>
