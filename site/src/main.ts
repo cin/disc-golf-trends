@@ -116,7 +116,7 @@ frame.addEventListener("load", () => {
 });
 
 // The dashboard remembers its theme (System, Mocha, ...) in localStorage; follow it here too.
-const THEME_KEY = "dgj-theme";
+const THEME_KEY = "dgt-theme";
 function applyStoredTheme() {
   try {
     const theme = localStorage.getItem(THEME_KEY);

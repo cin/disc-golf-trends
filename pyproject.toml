@@ -3,7 +3,7 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "disc-golf-journal"
+name = "disc-golf-trends"
 version = "0.1.0"
 description = "Your disc golf rounds and throws, from your own UDisc and TechDisc exports: MCP server and dashboard"
 readme = "README.md"
@@ -20,7 +20,7 @@ test = ["pytest==9.1.1"]
 dev = ["pytest==9.1.1", "ruff==0.17.1"]
 
 [project.scripts]
-disc-golf-journal-mcp = "udisc_mcp:main"
+disc-golf-trends-mcp = "udisc_mcp:main"
 
 [tool.setuptools]
 # Every top-level module. Install with `pip install -e .`: .env, dashboard_template.html and dashboards/ are found

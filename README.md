@@ -1,4 +1,4 @@
-# disc-golf-journal
+# disc-golf-trends
 
 Your disc golf rounds and practice throws, from your own exports. It has two parts: a read-only
 [MCP](https://modelcontextprotocol.io) server that lets Claude answer questions about your rounds, courses and
@@ -42,7 +42,7 @@ start if `.env` is readable by other users (`chmod 600 .env`).
 Claude Code:
 
 ```
-claude mcp add udisc -- C:\path\to\disc-golf-journal\.venv\Scripts\python C:\path\to\disc-golf-journal\udisc_mcp.py
+claude mcp add udisc -- C:\path\to\disc-golf-trends\.venv\Scripts\python C:\path\to\disc-golf-trends\udisc_mcp.py
 ```
 
 Claude Desktop (`claude_desktop_config.json`):
@@ -51,8 +51,8 @@ Claude Desktop (`claude_desktop_config.json`):
 {
   "mcpServers": {
     "udisc": {
-      "command": "C:\\path\\to\\disc-golf-journal\\.venv\\Scripts\\python.exe",
-      "args": ["C:\\path\\to\\disc-golf-journal\\udisc_mcp.py"]
+      "command": "C:\\path\\to\\disc-golf-trends\\.venv\\Scripts\\python.exe",
+      "args": ["C:\\path\\to\\disc-golf-trends\\udisc_mcp.py"]
     }
   }
 }

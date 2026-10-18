@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`disc-golf-journal` (formerly `udisc-mcp`) turns the owner's own UDisc scorecard and TechDisc throw CSV exports into answers and charts: a read-only MCP server (stdio, `mcp` 2.x `MCPServer`, registered under the name `udisc`) and an offline HTML dashboard. It is not affiliated with UDisc or TechDisc. `README.md` is the user-facing guide; don't duplicate it here. A Scala port of the MCP server for comparison lives in the sibling project `disc-golf-journal-scala`. The module names `udisc_data.py` and `udisc_mcp.py` are kept on purpose: they are the UDisc-specific parts.
+`disc-golf-trends` (formerly `disc-golf-journal` and `udisc-mcp`) turns the owner's own UDisc scorecard and TechDisc throw CSV exports into answers and charts: a read-only MCP server (stdio, `mcp` 2.x `MCPServer`, registered under the name `udisc`) and an offline HTML dashboard. It is not affiliated with UDisc or TechDisc. `README.md` is the user-facing guide; don't duplicate it here. A Scala port of the MCP server for comparison lives in the sibling project `disc-golf-journal-scala`. The module names `udisc_data.py` and `udisc_mcp.py` are kept on purpose: they are the UDisc-specific parts.
 
 ## Commands
 

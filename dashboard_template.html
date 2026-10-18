@@ -254,7 +254,7 @@ const params = new URLSearchParams(location.search);
 
 // ---------- themes: System (follows the OS) by default, Mocha (Catppuccin), or the opposite of the OS look ----------
 
-const THEME_KEY = 'dgj-theme';
+const THEME_KEY = 'dgt-theme';
 const THEME_NAMES = ['system', 'mocha', 'light', 'dark'];
 const osDark = () => !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 const oppositeTheme = () => (osDark() ? 'light' : 'dark');

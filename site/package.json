@@ -1,5 +1,5 @@
 {
-  "name": "disc-golf-journal-site",
+  "name": "disc-golf-trends-site",
   "version": "0.1.0",
   "private": true,
   "description": "Static site: pick your own UDisc / TechDisc CSV export and see the dashboard. Runs entirely in the browser.",
