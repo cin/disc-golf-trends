@@ -144,7 +144,9 @@ def scoring_trends(course: str | None = None, layout: str | None = None, group_b
 def hole_problem_report(
     course: str | None = None, layout: str | None = None, top_n: int = 10, min_rounds: int | None = None
 ) -> list[dict]:
-    """Holes that have cost the most total strokes over par, with average and blow-up counts."""
+    """Holes that have cost the most total strokes over par, with average and blow-up counts.
+
+    A blow-up is a hole played 2 or more strokes over par (double bogey or worse)."""
     return ud.hole_problem_report(
         rounds(), course=course, layout=layout, top_n=top_n, min_rounds=min_rounds or min_hole_rounds()
     )
