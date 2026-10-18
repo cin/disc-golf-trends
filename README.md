@@ -76,6 +76,20 @@ Claude Desktop (`claude_desktop_config.json`):
 Example questions: "Which holes at Gatewood cost me the most strokes?", "How has my scoring trended each season?",
 "Compare 2025 and 2026."
 
+## Dashboard
+
+```
+.venv\Scripts\python dashboard.py        # writes dashboards\udisc-dashboard.html
+```
+
+One self-contained HTML file with three tabs, opened by double-clicking it: **Scoring** (strokes over par and round
+rating by month, quarter or season; birdies and blow-ups per round; a courses table), **Holes** (where the strokes
+go on a chosen course, and a hole-by-season heatmap) and **Throws** (TechDisc speed and distance trends). Filters at
+the top scope the whole page by course and date range, every chart has a table view, and it follows your light or
+dark setting. It makes no network requests and has no animation. Re-run the command after each new export.
+
+The file embeds your real rounds, so `dashboards/` is git-ignored. Only your own rows are included.
+
 ## Data notes
 
 - The export has a `Par` row before each round's player rows. Par comes from there.

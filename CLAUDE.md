@@ -21,6 +21,7 @@ Dev dependencies are exact-pinned in `pyproject.toml`; bump deliberately.
 
 - `udisc_data.py`: pure parsing and statistics, no MCP code. `load_rounds` reads every `*.csv` in a folder, pairs each player row with the round's `Par` row, and de-duplicates on (player, course, layout, start).
 - `techdisc_data.py`: same idea for TechDisc throw exports (one row per throw, de-duplicated on `id`, `timeSeconds` for time). Python only; the Scala port does not have it.
+- `dashboard.py` + `dashboard_template.html`: generates a self-contained offline HTML dashboard (`dashboards/`, git-ignored). Python builds a JSON payload (player's rows only); the template renders inline SVG charts with plain JS, no libraries or network. Keep it free of animation and flashing (the owner is sensitive to strobing), set text with `textContent` only (tests enforce no `innerHTML`/`transition`/`animation`), and follow the dataviz palette (blue/orange, diverging blue-red heatmap). To check rendering: `msedge --headless=new --screenshot=...` against the generated file (`?theme=dark|light`, `#scoring|#holes|#throws`).
 - `udisc_mcp.py`: `.env` loading (same hand-rolled `load_env`/`need` as grade-watch), an mtime-keyed cache of the parsed rounds, and one thin `@mcp.tool` per query.
 
 Invariants:

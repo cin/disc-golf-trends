@@ -2,6 +2,16 @@
 
 Ideas that are not built yet. None of them blocks the current server.
 
+## Training: distance and control
+
+The owner is doing strength training to gain distance and control. TechDisc speed and distance trends (Throws tab of
+the dashboard) are the direct measure. Not built yet, and only meaningful once there are several months of throws:
+
+- **Consistency ("control")**: spread (standard deviation) of hyzer, nose and launch angle and of distance, within a
+  throw style such as backhand hyzer, by month. Needs a throw-style filter on the Throws tab.
+- **Training log**: if the owner keeps one (dates, lifts), overlay it on speed and distance trends. Needs a data file.
+- **Speed to distance**: scatter of speed against distance per throw, to see whether added speed turns into distance.
+
 ## Side quest: on-course throw tracking (Apple Watch and friends)
 
 Goal: capture throw speed, angle and similar numbers while playing a round, and feed them to this server as another
