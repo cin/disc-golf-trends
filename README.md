@@ -1,8 +1,9 @@
 # disc-golf-trends
 
-Your disc golf rounds and practice throws, from your own exports. It has two parts: a read-only
+Your disc golf rounds and practice throws, from your own exports. It has three parts: a read-only
 [MCP](https://modelcontextprotocol.io) server that lets Claude answer questions about your rounds, courses and
-scoring trends, and an offline HTML dashboard of the same data. (Formerly `udisc-mcp`. Not affiliated with UDisc or
+scoring trends, an offline HTML dashboard of the same data, and a [website](#website) where anyone can pick their own
+CSV and see the dashboard in the browser. (Formerly `disc-golf-journal` and `udisc-mcp`. Not affiliated with UDisc or
 TechDisc.)
 
 **No credentials and no network access.** UDisc has no public API, and its Terms prohibit scraping, so this project
@@ -20,6 +21,8 @@ exports next to old ones.
 Python 3.10 or newer.
 
 ```
+git clone https://github.com/cin/disc-golf-trends.git
+cd disc-golf-trends
 python -m venv .venv
 .venv\Scripts\pip install -e ".[dev]"      # Linux/macOS: .venv/bin/pip
 copy .env.example .env                     # then edit it
@@ -32,10 +35,12 @@ copy .env.example .env                     # then edit it
 | `UDISC_CSV_DIR` | Folder holding your export(s) |
 | `UDISC_PLAYER` | Your name exactly as in the `PlayerName` column |
 | `TECHDISC_CSV_DIR` | Optional. Folder holding a TechDisc throw export; may be the same folder as `UDISC_CSV_DIR` (files are told apart by header). Without it the TechDisc tools report the missing setting |
-| `MIN_HOLE_ROUNDS` | Optional. Rounds a hole needs before `hole_problem_report` ranks it (default 3) |
+| `MIN_HOLE_ROUNDS` | Optional. Rounds a hole needs before `hole_problem_report` ranks it: a whole number of 1 or more (default 3) |
 
-The `.env` file is git-ignored. It holds only paths and a name, no secrets. On Linux/macOS the server refuses to
-start if `.env` is readable by other users (`chmod 600 .env`).
+The `.env` file is git-ignored. It holds only paths and a name, no secrets. The server exits at startup with a clear
+message if `UDISC_CSV_DIR` or `UDISC_PLAYER` is missing or `MIN_HOLE_ROUNDS` is invalid, and on Linux/macOS if `.env`
+is readable by other users (`chmod 600 .env`). A setting that goes wrong later (say the folder is deleted) fails that
+one tool call, not the server.
 
 ## Register with Claude
 
@@ -76,6 +81,10 @@ Claude Desktop (`claude_desktop_config.json`):
 | `throw_stats` | TechDisc: speed, distance, spin and angle averages/maxima, overall and by throw style |
 | `throw_trends` | TechDisc: those numbers by month or season |
 
+Dates (`start`, `end`) are `YYYY-MM-DD` and inclusive; anything else is rejected with a message instead of silently
+returning the wrong rounds. `group_by` accepts only `month` or `season`. `list_rounds` and `list_throws` return at most
+500 rows.
+
 Example questions: "Which holes at my home course cost me the most strokes?", "How has my scoring trended each season?",
 "Compare 2025 and 2026."
 
@@ -106,12 +115,15 @@ The file embeds real rounds, so `dashboards/` is git-ignored. Each file holds on
 
 ## Website
 
-`site/` is the same dashboard as a static web page: a visitor picks their own UDisc and/or TechDisc CSV export and
-sees the charts. Nothing is uploaded. The files are read in the browser tab, and the built page's content security
-policy blocks every network request. It is written in TypeScript (a port of `udisc_data.py` and `techdisc_data.py`)
-and draws with the same `dashboard_template.html` as the Python dashboard, so there is one set of charts to maintain.
-A scorecard export includes everyone you played with; the page asks whose rounds to show and starts with the player
-who has the most.
+**Live at <https://cin.github.io/disc-golf-trends/>.** `site/` is the same dashboard as a static web page: a visitor
+picks their own UDisc and/or TechDisc CSV export and sees the charts. Nothing is uploaded. The files are read in the
+browser tab, and the built page's content security policy stops the page from making network requests. It is written
+in TypeScript (a port of `udisc_data.py` and `techdisc_data.py`) and draws with the same `dashboard_template.html` as
+the Python dashboard, so there is one set of charts to maintain. A scorecard export includes everyone you played
+with; the page asks whose rounds to show and starts with the player who has the most. "Try it with sample data" loads
+made-up rounds and throws.
+
+Working on it needs Node.js 22.12 or newer (24 recommended); the Python parts do not need Node.
 
 ```
 cd site
@@ -124,8 +136,8 @@ npm run build      # static files in site/dist/
 The port is held to the Python code by `tests/golden.py`: it runs every query over the fixtures (including a larger
 made-up dataset) and writes `site/tests/golden.json`, and the TypeScript tests must reproduce it exactly. After
 changing the Python statistics, run `.venv\Scripts\python tests\golden.py` and commit the result; a Python test fails
-when the file is stale. Pushes to `main` that touch `site/` are published to GitHub Pages by
-`.github/workflows/pages.yml`.
+when the file is stale. Pushes to `main` that touch `site/`, the dashboard template or the fixtures are published to
+GitHub Pages by `.github/workflows/pages.yml`.
 
 ## Data notes
 
@@ -145,10 +157,12 @@ when the file is stale. Pushes to `main` that touch `site/` are published to Git
 ```
 .venv\Scripts\python -m pytest -q
 .venv\Scripts\ruff check .
+cd site && npm test && npm run typecheck      # the website, needs Node.js
 ```
 
-Tests use made-up data in `tests/fixtures/sample.csv`. Never commit your real export: `*.csv` is git-ignored except
-for `tests/fixtures/`.
+Tests use made-up data in `tests/fixtures/` (`sample.csv` and `throws.csv`, plus larger generated
+`synthetic_*.csv`). Never commit your real export: `*.csv` is git-ignored except for `tests/fixtures/`.
+`.github/workflows/ci.yml` runs all of the above on every push and pull request.
 
 ## License
 

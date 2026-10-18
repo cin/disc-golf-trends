@@ -5,7 +5,7 @@ vitest suite loads the same CSVs and must reproduce every value here; tests/test
 files are out of date, so a change to the Python statistics cannot silently leave the port behind.
 
 All data is made up. Throw times sit around midday UTC and the local-time `when` field is left out, so the results
-do not depend on the machine's time zone.
+only depend on the machine's time zone if it is far from UTC (see the skip in tests/test_golden.py).
 """
 
 import json

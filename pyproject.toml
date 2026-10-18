@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "disc-golf-trends"
 version = "0.1.0"
-description = "Your disc golf rounds and throws, from your own UDisc and TechDisc exports: MCP server and dashboard"
+description = "Your disc golf rounds and throws, from your own UDisc and TechDisc exports: MCP server, dashboard and website"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
