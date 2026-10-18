@@ -1,0 +1,91 @@
+# udisc-mcp
+
+A read-only [MCP](https://modelcontextprotocol.io) server that lets Claude answer questions about your disc golf
+rounds, courses and scoring trends from a UDisc scorecard CSV export.
+
+**No credentials and no network access.** UDisc has no public API, and its Terms prohibit scraping, so this server
+never contacts UDisc. It only reads the CSV that the UDisc app exports. Nothing is modified.
+
+## Get your data
+
+In the UDisc mobile app: **You** tab → menu (top right) → **Rounds** → menu (top right) → **Export to CSV**.
+Move the file into a folder of your choice. One export holds your whole history; re-export now and then to pick up
+new rounds. Every `*.csv` in the folder is read and overlapping exports are de-duplicated, so you can drop new
+exports next to old ones.
+
+## Setup
+
+Python 3.10 or newer.
+
+```
+python -m venv .venv
+.venv\Scripts\pip install -e ".[dev]"      # Linux/macOS: .venv/bin/pip
+copy .env.example .env                     # then edit it
+```
+
+`.env` (see `.env.example`):
+
+| Variable | Meaning |
+|---|---|
+| `UDISC_CSV_DIR` | Folder holding your export(s) |
+| `UDISC_PLAYER` | Your name exactly as in the `PlayerName` column |
+| `MIN_HOLE_ROUNDS` | Optional. Rounds a hole needs before `hole_problem_report` ranks it (default 3) |
+
+The `.env` file is git-ignored. It holds only paths and a name, no secrets. On Linux/macOS the server refuses to
+start if `.env` is readable by other users (`chmod 600 .env`).
+
+## Register with Claude
+
+Claude Code:
+
+```
+claude mcp add udisc -- C:\path\to\udisc-mcp\.venv\Scripts\python C:\path\to\udisc-mcp\udisc_mcp.py
+```
+
+Claude Desktop (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "udisc": {
+      "command": "C:\\path\\to\\udisc-mcp\\.venv\\Scripts\\python.exe",
+      "args": ["C:\\path\\to\\udisc-mcp\\udisc_mcp.py"]
+    }
+  }
+}
+```
+
+## Tools (all read-only)
+
+| Tool | Answers |
+|---|---|
+| `export_status` | How fresh is the data? Newest round, export age, stale warning |
+| `list_rounds` | Rounds by date range and course, newest first |
+| `get_round` | Hole-by-hole scores vs par for one round |
+| `list_courses` | Courses, layouts, rounds played, first/last played |
+| `course_stats` | Average/best/worst rounds, per-layout and per-hole averages |
+| `scoring_trends` | Score vs par by month or season, optionally per course |
+| `hole_problem_report` | Holes that cost the most strokes over par, with blow-up counts |
+| `compare_seasons` | Two calendar years side by side |
+
+Example questions: "Which holes at Gatewood cost me the most strokes?", "How has my scoring trended each season?",
+"Compare 2025 and 2026."
+
+## Data notes
+
+- The export has a `Par` row before each round's player rows. Par comes from there.
+- A score of `0` means the hole was not played. Rounds with no scores are ignored, and partial rounds are left out of
+  averages and trends.
+- Totals are the sum of the hole scores; the file's `Total` column is ignored because it can disagree with them.
+- Hole numbers are only compared within one course layout.
+- The export has no throws, putts or penalty columns, so none are reported.
+
+## Development
+
+```
+.venv\Scripts\python -m pytest -q
+.venv\Scripts\ruff check .
+```
+
+Tests use made-up data in `tests/fixtures/sample.csv`. Never commit your real export: `*.csv` is git-ignored except
+for `tests/fixtures/`.
