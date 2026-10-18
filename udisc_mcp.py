@@ -14,6 +14,7 @@ from pathlib import Path
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
+import techdisc_data as td
 import udisc_data as ud
 
 HERE = Path(__file__).resolve().parent
@@ -26,11 +27,13 @@ mcp = MCPServer(
     instructions=(
         "Answers questions about the user's disc golf rounds from a UDisc CSV export. Scores are strokes; "
         "'to_par' is strokes over (+) or under (-) par. Call export_status first if freshness matters. "
-        "Hole numbers are only comparable within one course layout."
+        "Hole numbers are only comparable within one course layout. The throw_* and list_throws tools cover "
+        "TechDisc practice throws (speed, distance, spin, angles), which are separate from rounds."
     ),
 )
 
 _cache = {"key": None, "rounds": None}
+_throw_cache = {"key": None, "throws": None}
 
 
 # ---------- config ----------
@@ -151,6 +154,60 @@ def hole_problem_report(
 def compare_seasons(year_a: int, year_b: int, course: str | None = None) -> dict:
     """Compare two calendar years: rounds, average score vs par, best/worst round and the change."""
     return ud.compare_seasons(rounds(), year_a, year_b, course=course)
+
+
+def throws():
+    """All TechDisc throws. Re-read whenever a CSV in the folder is added or changes."""
+    directory = need("TECHDISC_CSV_DIR")
+    key = (directory, _signature(directory) if Path(directory).is_dir() else None)
+    if _throw_cache["key"] != key:
+        _throw_cache["throws"] = td.load_throws(directory)
+        _throw_cache["key"] = key
+    return _throw_cache["throws"]
+
+
+@mcp.tool(annotations=READ_ONLY)
+def throw_export_status() -> dict:
+    """How fresh the TechDisc data is: throw count, first/last throw, export file age and a stale warning."""
+    ts = throws()
+    exported = td.latest_export_mtime(need("TECHDISC_CSV_DIR"))
+    age = (datetime.now().astimezone() - exported).days
+    return {
+        "throws": len(ts),
+        "first_throw": ts[0].when.date().isoformat() if ts else None,
+        "last_throw": ts[-1].when.date().isoformat() if ts else None,
+        "export_file_updated": exported.date().isoformat(),
+        "export_age_days": age,
+        "stale": age > STALE_DAYS,
+        "note": "Only throws up to the last TechDisc export are included.",
+    }
+
+
+@mcp.tool(annotations=READ_ONLY)
+def list_throws(
+    start: str | None = None,
+    end: str | None = None,
+    primary_type: str | None = None,
+    throw_type: str | None = None,
+    limit: int = 50,
+) -> list[dict]:
+    """List TechDisc throws, newest first. primary_type is Backhand/Forehand; throw_type is e.g. Hyzer/Flat."""
+    ts = td.filter_throws(throws(), start=start, end=end, primary_type=primary_type, throw_type=throw_type)
+    return [td.summarize_throw(t) for t in reversed(ts)][: max(1, limit)]
+
+
+@mcp.tool(annotations=READ_ONLY)
+def throw_stats(start: str | None = None, end: str | None = None) -> dict:
+    """TechDisc averages and maxima (speed, distance, spin, angles), overall and by throw style."""
+    return td.throw_stats(throws(), start=start, end=end)
+
+
+@mcp.tool(annotations=READ_ONLY)
+def throw_trends(
+    primary_type: str | None = None, throw_type: str | None = None, group_by: str = "month"
+) -> list[dict]:
+    """TechDisc speed, distance and spin over time, grouped by 'month' or 'season' (calendar year)."""
+    return td.throw_trends(throws(), primary_type=primary_type, throw_type=throw_type, group_by=group_by)
 
 
 def main():

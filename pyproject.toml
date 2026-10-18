@@ -22,7 +22,7 @@ dev = ["pytest==9.1.1", "ruff==0.17.1"]
 udisc-mcp = "udisc_mcp:main"
 
 [tool.setuptools]
-py-modules = ["udisc_data", "udisc_mcp"]
+py-modules = ["udisc_data", "techdisc_data", "udisc_mcp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
