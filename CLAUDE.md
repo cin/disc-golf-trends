@@ -22,7 +22,10 @@ Dev dependencies are exact-pinned in `pyproject.toml`; bump deliberately.
 - `udisc_data.py`: pure parsing and statistics, no MCP code. `load_rounds` reads every `*.csv` in a folder, pairs each player row with the round's `Par` row, and de-duplicates on (player, course, layout, start).
 - `techdisc_data.py`: same idea for TechDisc throw exports (one row per throw, de-duplicated on `id`, `timeSeconds` for time). Python only; the Scala port does not have it.
 - `dashboard.py` + `dashboard_template.html`: generates a self-contained offline HTML dashboard (`dashboards/`, git-ignored). Python builds a JSON payload (player's rows only); the template renders inline SVG charts with plain JS, no libraries or network. Keep it free of animation and flashing (accessibility), set text with `textContent` only (tests enforce no `innerHTML`/`transition`/`animation`), and follow the dataviz palette (blue/orange, diverging blue-red heatmap). To check rendering: `msedge --headless=new --screenshot=...` against the generated file (`?theme=dark|light`, `#scoring|#holes|#throws`).
-- `udisc_mcp.py`: `.env` loading (same hand-rolled `load_env`/`need` as grade-watch), an mtime-keyed cache of the parsed rounds, and one thin `@mcp.tool` per query.
+- `config.py`: `.env` loading (same hand-rolled `load_env`/`need` as grade-watch) and the mtime-keyed caches of parsed rounds and throws, shared by the server and the dashboard. It raises `ConfigError` and never exits, so a bad setting fails one tool call, not the server; `udisc_mcp.main()` calls `check_required()` once at startup and exits there.
+- `common.py`: helpers shared by both data modules (`check_day` validates `start`/`end` dates).
+- `udisc_mcp.py`: one thin `@mcp.tool` per query. `group_by` is a `Literal` so the schema rejects bad values; list tools clamp `limit` to `MAX_LIMIT`.
+- Every top-level module must be listed in `py-modules` in `pyproject.toml` (a test checks). Install with `pip install -e .`: `.env` and the dashboard template are found relative to the checkout.
 
 Invariants:
 

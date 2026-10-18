@@ -1,8 +1,10 @@
+import re
 import shutil
 from pathlib import Path
 
 import pytest
 
+import config
 import udisc_data as ud
 import udisc_mcp as srv
 
@@ -202,7 +204,7 @@ def test_compare_seasons(alex):
 def configured(csv_dir, monkeypatch):
     monkeypatch.setenv("UDISC_CSV_DIR", str(csv_dir))
     monkeypatch.setenv("UDISC_PLAYER", "Alex")
-    srv._cache.update(key=None, rounds=None)
+    config.clear_caches()
     return csv_dir
 
 
@@ -217,19 +219,19 @@ def test_tools_return_data(configured):
 
 
 def test_cache_reloads_when_new_export_added(configured):
-    assert len(srv.rounds()) == 5
+    assert len(config.rounds()) == 5
     extra = FIXTURE.read_text(encoding="utf-8").splitlines()
     row = extra[9].replace("2026-06-20 1800", "2026-08-01 1800").replace("2026-06-20 1840", "2026-08-01 1840")
     header = extra[0]
     par = extra[8].replace("2026-06-20 1800", "2026-08-01 1800").replace("2026-06-20 1840", "2026-08-01 1840")
     (configured / "newer.csv").write_text("\n".join([header, par, row]) + "\n", encoding="utf-8")
-    assert len(srv.rounds()) == 6
+    assert len(config.rounds()) == 6
 
 
 def test_missing_config_exits(monkeypatch):
     monkeypatch.delenv("UDISC_CSV_DIR", raising=False)
-    with pytest.raises(SystemExit):
-        srv.need("UDISC_CSV_DIR")
+    with pytest.raises(config.ConfigError):
+        config.need("UDISC_CSV_DIR")
 
 
 def test_all_tools_registered_read_only():
@@ -253,3 +255,74 @@ def test_all_tools_registered_read_only():
         "throw_trends",
     }
     assert all(t.annotations and t.annotations.read_only_hint for t in tools)
+
+
+# ---------- input validation and config ----------
+
+
+def test_bad_dates_are_rejected(alex):
+    for bad in ("2026-3-1", "yesterday", "2026-13-01"):
+        with pytest.raises(ValueError, match="start must be a date"):
+            ud.filter_rounds(alex, start=bad)
+    with pytest.raises(ValueError, match="end must be a date"):
+        ud.scoring_distribution(alex, end="soon")
+    assert len(ud.filter_rounds(alex, start=" 2026-06-01 ")) == 2  # surrounding spaces are fine
+
+
+def test_tools_reject_bad_input(configured):
+    with pytest.raises(ValueError, match="start must be a date"):
+        srv.list_rounds(start="06/01/2026")
+    assert len(srv.list_rounds(limit=10_000)) == 5  # an oversized limit is clamped, not an error
+
+
+def test_group_by_is_limited_in_the_tool_schema():
+    import asyncio
+
+    tools = {t.name: t for t in asyncio.run(srv.mcp.list_tools())}
+    for name in ("scoring_trends", "scoring_distribution", "throw_trends"):
+        assert "week" not in str(tools[name].input_schema)
+        assert "season" in str(tools[name].input_schema)
+
+
+def test_min_rounds_zero_is_not_replaced_by_the_default(configured):
+    assert srv.hole_problem_report(min_rounds=0) != srv.hole_problem_report()
+
+
+def test_min_hole_rounds_setting(monkeypatch):
+    monkeypatch.delenv("MIN_HOLE_ROUNDS", raising=False)
+    assert config.min_hole_rounds() == 3
+    monkeypatch.setenv("MIN_HOLE_ROUNDS", "5")
+    assert config.min_hole_rounds() == 5
+    for bad in ("abc", "0", "-2", ""):
+        monkeypatch.setenv("MIN_HOLE_ROUNDS", bad)
+        with pytest.raises(config.ConfigError, match="MIN_HOLE_ROUNDS"):
+            config.min_hole_rounds()
+
+
+def test_load_env_reads_values_without_overriding(tmp_path, monkeypatch):
+    (tmp_path / ".env").write_text('# comment\nFOO_TEST="quoted"\nBAR_TEST = spaced\nSET_TEST=file\n', encoding="utf-8")
+    monkeypatch.setattr(config, "HERE", tmp_path)
+    monkeypatch.setattr(config.os, "name", "nt")  # skip the posix permission check
+    monkeypatch.setenv("SET_TEST", "already")
+    for name in ("FOO_TEST", "BAR_TEST"):
+        monkeypatch.delenv(name, raising=False)
+    config.load_env()
+    assert (config.os.environ["FOO_TEST"], config.os.environ["BAR_TEST"]) == ("quoted", "spaced")
+    assert config.os.environ["SET_TEST"] == "already"
+    monkeypatch.delenv("FOO_TEST")
+    monkeypatch.delenv("BAR_TEST")
+
+
+def test_check_required_names_the_missing_setting(monkeypatch):
+    monkeypatch.setenv("UDISC_CSV_DIR", "x")
+    monkeypatch.delenv("UDISC_PLAYER", raising=False)
+    with pytest.raises(config.ConfigError, match="UDISC_PLAYER"):
+        config.check_required()
+
+
+def test_every_top_level_module_is_packaged():
+    root = Path(__file__).parent.parent
+    text = (root / "pyproject.toml").read_text(encoding="utf-8")
+    declared = set(re.search(r"py-modules = \[(.*?)\]", text, re.S).group(1).replace('"', "").replace(",", " ").split())
+    assert declared == {p.stem for p in root.glob("*.py")}
+    assert (root / "dashboard_template.html").exists()

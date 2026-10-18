@@ -14,8 +14,8 @@ import re
 from collections import Counter
 from pathlib import Path
 
+import config
 import udisc_data as ud
-import udisc_mcp as srv
 
 HERE = Path(__file__).resolve().parent
 TEMPLATE = HERE / "dashboard_template.html"
@@ -89,29 +89,31 @@ def main(argv=None):
         "are in the export; your TechDisc throws are left out",
     )
     args = ap.parse_args(argv)
-    srv.load_env()
-    me = srv.need("UDISC_PLAYER")
-    friend = args.player and args.player.strip().lower() != me.lower()
-    if friend:
-        rounds = ud.load_rounds(srv.need("UDISC_CSV_DIR"), player=args.player.strip())
-        if not rounds:
-            raise SystemExit(f"no rounds found for player {args.player!r}")
-        throws, name = [], rounds[0].player
-    else:
-        rounds, name = srv.rounds(), me
-        try:
-            throws = srv.throws()
-        except (SystemExit, FileNotFoundError):  # TECHDISC_CSV_DIR not set, or no throw export yet
-            throws = []
+    try:
+        config.load_env()
+        me = config.need("UDISC_PLAYER")
+        friend = bool(args.player) and args.player.strip().lower() != me.lower()
+        if friend:
+            rounds = ud.load_rounds(config.need("UDISC_CSV_DIR"), player=args.player.strip())
+            if not rounds:
+                raise SystemExit(f"no rounds found for player {args.player!r}")
+            throws, name = [], rounds[0].player
+        else:
+            rounds, name = config.rounds(), me
+            try:
+                throws = config.throws()
+            except (config.ConfigError, FileNotFoundError):  # TECHDISC_CSV_DIR not set, or no throw export yet
+                throws = []
+    except config.ConfigError as e:
+        raise SystemExit(str(e)) from None
     payload = build_payload(rounds, throws, name)
     if friend:
         payload["note"] = "only rounds scored together with you"
     out = args.out or (DEFAULT_OUT.with_name(f"udisc-dashboard-{_slug(name)}.html") if friend else DEFAULT_OUT)
     html = render(payload)
-    args.out = out
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(html, encoding="utf-8")
-    print(f"wrote {args.out} ({len(rounds)} rounds, {len(throws)} throws)")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(html, encoding="utf-8")
+    print(f"wrote {out} ({len(rounds)} rounds, {len(throws)} throws)")
 
 
 if __name__ == "__main__":

@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
+import config
 import dashboard
 import techdisc_data as td
 import udisc_data as ud
-import udisc_mcp as srv
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -83,8 +83,7 @@ def test_main_writes_file_from_env(data_dir, tmp_path_factory, monkeypatch):
     monkeypatch.setenv("UDISC_CSV_DIR", str(data_dir))
     monkeypatch.setenv("TECHDISC_CSV_DIR", str(data_dir))
     monkeypatch.setenv("UDISC_PLAYER", "Alex")
-    srv._cache.update(key=None, rounds=None)
-    srv._throw_cache.update(key=None, throws=None)
+    config.clear_caches()
     dashboard.main(["--out", str(out)])
     payload = embedded(out.read_text(encoding="utf-8"))
     assert (len(payload["rounds"]), len(payload["throws"])) == (5, 7)
@@ -95,8 +94,7 @@ def test_main_player_option_builds_another_players_dashboard(data_dir, tmp_path_
     monkeypatch.setenv("UDISC_CSV_DIR", str(data_dir))
     monkeypatch.setenv("TECHDISC_CSV_DIR", str(data_dir))
     monkeypatch.setenv("UDISC_PLAYER", "Alex")
-    srv._cache.update(key=None, rounds=None)
-    srv._throw_cache.update(key=None, throws=None)
+    config.clear_caches()
     dashboard.main(["--out", str(out), "--player", "sam"])
     payload = embedded(out.read_text(encoding="utf-8"))
     assert (payload["player"], len(payload["rounds"]), payload["throws"]) == ("Sam", 1, [])
@@ -115,8 +113,7 @@ def test_main_works_without_techdisc(data_dir, tmp_path_factory, monkeypatch):
     monkeypatch.setenv("UDISC_CSV_DIR", str(data_dir))
     monkeypatch.delenv("TECHDISC_CSV_DIR", raising=False)
     monkeypatch.setenv("UDISC_PLAYER", "Alex")
-    srv._cache.update(key=None, rounds=None)
-    srv._throw_cache.update(key=None, throws=None)
-    monkeypatch.setattr(srv, "load_env", lambda: None)  # don't pick TECHDISC_CSV_DIR back up from the real .env
+    config.clear_caches()
+    monkeypatch.setattr(config, "load_env", lambda: None)  # don't pick TECHDISC_CSV_DIR back up from the real .env
     dashboard.main(["--out", str(out)])
     assert embedded(out.read_text(encoding="utf-8"))["throws"] == []

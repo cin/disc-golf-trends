@@ -14,6 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from statistics import mean
 
+from common import check_day
+
 PAR_PLAYER = "Par"
 BLOWUP_OVER_PAR = 2  # a hole this many strokes over par (or worse) counts as a blow-up
 
@@ -180,6 +182,7 @@ def _same(a, b):
 
 def filter_rounds(rounds, start=None, end=None, course=None, layout=None):
     """start/end are ISO dates (YYYY-MM-DD), inclusive. course/layout match case-insensitively by substring."""
+    start, end = check_day(start, "start"), check_day(end, "end")
     out = []
     for r in rounds:
         day = r.start.date().isoformat()

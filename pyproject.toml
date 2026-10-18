@@ -22,7 +22,9 @@ dev = ["pytest==9.1.1", "ruff==0.17.1"]
 disc-golf-journal-mcp = "udisc_mcp:main"
 
 [tool.setuptools]
-py-modules = ["udisc_data", "techdisc_data", "udisc_mcp"]
+# Every top-level module. Install with `pip install -e .`: .env, dashboard_template.html and dashboards/ are found
+# relative to the checkout, so a regular (copying) install would not have them.
+py-modules = ["common", "config", "dashboard", "udisc_data", "techdisc_data", "udisc_mcp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

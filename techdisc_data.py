@@ -18,6 +18,8 @@ from datetime import datetime
 from pathlib import Path
 from statistics import mean
 
+from common import check_day
+
 MARKER_COLUMN = "speedMph"  # present in throw exports, absent from UDisc scorecards
 
 
@@ -114,6 +116,7 @@ def _extreme(values, fn):
 
 def filter_throws(throws, start=None, end=None, primary_type=None, throw_type=None):
     """start/end are ISO dates (YYYY-MM-DD), inclusive. Types match case-insensitively (exact)."""
+    start, end = check_day(start, "start"), check_day(end, "end")
     out = []
     for t in throws:
         day = t.when.date().isoformat()

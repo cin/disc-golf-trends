@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+import config
 import techdisc_data as td
 import udisc_data as ud
 import udisc_mcp as srv
@@ -106,8 +107,7 @@ def configured(mixed_dir, monkeypatch):
     monkeypatch.setenv("UDISC_CSV_DIR", str(mixed_dir))
     monkeypatch.setenv("TECHDISC_CSV_DIR", str(mixed_dir))
     monkeypatch.setenv("UDISC_PLAYER", "Alex")
-    srv._cache.update(key=None, rounds=None)
-    srv._throw_cache.update(key=None, throws=None)
+    config.clear_caches()
     return mixed_dir
 
 
@@ -130,5 +130,5 @@ def test_export_status_ignores_throw_file(configured):
 
 def test_throw_tools_need_setting(monkeypatch):
     monkeypatch.delenv("TECHDISC_CSV_DIR", raising=False)
-    with pytest.raises(SystemExit):
-        srv.throws()
+    with pytest.raises(config.ConfigError):
+        config.throws()
