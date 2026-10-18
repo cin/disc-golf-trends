@@ -126,3 +126,7 @@ The file embeds real rounds, so `dashboards/` is git-ignored. Each file holds on
 
 Tests use made-up data in `tests/fixtures/sample.csv`. Never commit your real export: `*.csv` is git-ignored except
 for `tests/fixtures/`.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
