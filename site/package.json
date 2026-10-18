@@ -1,0 +1,20 @@
+{
+  "name": "disc-golf-journal-site",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Static site: pick your own UDisc / TechDisc CSV export and see the dashboard. Runs entirely in the browser.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  }
+}

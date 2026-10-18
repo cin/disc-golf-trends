@@ -104,6 +104,29 @@ dashboard covers those rounds, and your TechDisc throws are left out.
 
 The file embeds real rounds, so `dashboards/` is git-ignored. Each file holds one player's rows.
 
+## Website
+
+`site/` is the same dashboard as a static web page: a visitor picks their own UDisc and/or TechDisc CSV export and
+sees the charts. Nothing is uploaded. The files are read in the browser tab, and the built page's content security
+policy blocks every network request. It is written in TypeScript (a port of `udisc_data.py` and `techdisc_data.py`)
+and draws with the same `dashboard_template.html` as the Python dashboard, so there is one set of charts to maintain.
+A scorecard export includes everyone you played with; the page asks whose rounds to show and starts with the player
+who has the most.
+
+```
+cd site
+npm install
+npm run dev        # http://localhost:5173/, add ?sample to load made-up data
+npm test           # unit tests, plus a check that the port gives the Python implementation's answers
+npm run build      # static files in site/dist/
+```
+
+The port is held to the Python code by `tests/golden.py`: it runs every query over the fixtures (including a larger
+made-up dataset) and writes `site/tests/golden.json`, and the TypeScript tests must reproduce it exactly. After
+changing the Python statistics, run `.venv\Scripts\python tests\golden.py` and commit the result; a Python test fails
+when the file is stale. Pushes to `main` that touch `site/` are published to GitHub Pages by
+`.github/workflows/pages.yml`.
+
 ## Data notes
 
 - The export has a `Par` row before each round's player rows. Par comes from there.
