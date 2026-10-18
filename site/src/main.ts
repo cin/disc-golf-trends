@@ -15,7 +15,10 @@ const input = el<HTMLInputElement>("files");
 const drop = el("drop");
 const status = el("status");
 const error = el("error");
-const whoCard = el("who-card");
+const pickCard = el<HTMLDetailsElement>("pick-card");
+const pickSum = el("pick-sum");
+const whoCard = el<HTMLDetailsElement>("who-card");
+const whoSum = el("who-sum");
 const who = el<HTMLSelectElement>("who");
 const result = el("result");
 const frame = el<HTMLIFrameElement>("dash");
@@ -25,7 +28,20 @@ let files: CsvFile[] = [];
 function fail(message: string) {
   error.textContent = message;
   status.textContent = "";
+  result.hidden = true;
+  whoCard.hidden = true;
+  pickCard.open = true; // so the files can be chosen again
 }
+
+/** Minimize a setup card to its one-line summary; keyboard focus follows so it is not lost inside the closed card. */
+function minimize(card: HTMLDetailsElement, summary: string, into: HTMLElement) {
+  const hadFocus = card.contains(document.activeElement);
+  into.textContent = `${summary} · click to change`;
+  card.open = false;
+  if (hadFocus) card.querySelector("summary")?.focus({ preventScroll: true });
+}
+
+const fileSummary = (names: string[]) => (names.length > 3 ? `${names.length} files` : names.join(", "));
 
 async function readFiles(picked: File[]): Promise<CsvFile[]> {
   if (picked.length > MAX_FILES) throw new ExportError(`Please pick at most ${MAX_FILES} files at once.`);
@@ -34,7 +50,7 @@ async function readFiles(picked: File[]): Promise<CsvFile[]> {
   return Promise.all(picked.map(async (f) => ({ name: f.name, text: await f.text() })));
 }
 
-function show(analysis: Analysis) {
+function show(analysis: Analysis, collapsePick: boolean) {
   who.replaceChildren(
     ...analysis.players.map((p) => {
       const option = document.createElement("option");
@@ -45,6 +61,9 @@ function show(analysis: Analysis) {
   );
   if (analysis.player !== null) who.value = analysis.player;
   whoCard.hidden = analysis.players.length < 2;
+  const chosen = analysis.players.find((p) => p.player === analysis.player);
+  if (!whoCard.hidden && chosen) minimize(whoCard, `${chosen.player} (${chosen.rounds} ${chosen.rounds === 1 ? "round" : "rounds"})`, whoSum);
+  if (collapsePick) minimize(pickCard, fileSummary(files.map((f) => f.name)), pickSum);
 
   frame.title = `Disc golf dashboard for ${analysis.payload.player}`;
   frame.srcdoc = render(analysis.payload, template);
@@ -55,12 +74,11 @@ function show(analysis: Analysis) {
   error.textContent = "";
 }
 
-function run(player: string | null = null) {
+/** Analyze the current files. New files minimize the picker too; choosing another player only minimizes that card. */
+function run(player: string | null = null, collapsePick = true) {
   try {
-    show(analyze(files, player));
+    show(analyze(files, player), collapsePick);
   } catch (e) {
-    result.hidden = true;
-    whoCard.hidden = true;
     fail(e instanceof ExportError || e instanceof RangeError ? e.message : `Could not read those files: ${String(e)}`);
   }
 }
@@ -70,8 +88,6 @@ async function load(picked: File[]) {
   try {
     files = await readFiles(picked);
   } catch (e) {
-    result.hidden = true;
-    whoCard.hidden = true;
     fail(e instanceof Error ? e.message : String(e));
     return;
   }
@@ -79,7 +95,7 @@ async function load(picked: File[]) {
 }
 
 input.addEventListener("change", () => void load([...(input.files ?? [])]));
-who.addEventListener("change", () => run(who.value));
+who.addEventListener("change", () => run(who.value, false));
 el("sample").addEventListener("click", () => {
   files = [
     { name: "sample-scorecards.csv", text: sampleScorecards },
@@ -88,16 +104,21 @@ el("sample").addEventListener("click", () => {
   run();
 });
 
+// Files can be dropped on the whole picker card, so it works while the card is minimized too.
 for (const type of ["dragenter", "dragover"]) {
-  drop.addEventListener(type, (ev) => {
+  pickCard.addEventListener(type, (ev) => {
     ev.preventDefault();
+    pickCard.classList.add("over");
     drop.classList.add("over");
   });
 }
 for (const type of ["dragleave", "drop"]) {
-  drop.addEventListener(type, () => drop.classList.remove("over"));
+  pickCard.addEventListener(type, () => {
+    pickCard.classList.remove("over");
+    drop.classList.remove("over");
+  });
 }
-drop.addEventListener("drop", (ev) => {
+pickCard.addEventListener("drop", (ev) => {
   ev.preventDefault();
   void load([...(ev.dataTransfer?.files ?? [])]);
 });

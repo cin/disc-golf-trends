@@ -15,8 +15,11 @@
     </div>
   </header>
 
-  <section class="card" aria-labelledby="pick-title">
-    <h2 id="pick-title">1. Choose your export</h2>
+  <details class="card" id="pick-card" open>
+    <summary>
+      <h2 id="pick-title">1. Choose your export</h2>
+      <span class="sum" id="pick-sum"></span>
+    </summary>
     <label class="drop" id="drop" for="files">
       <input type="file" id="files" accept=".csv,text/csv" multiple>
       <span class="drop-title">Choose CSV files, or drop them here</span>
@@ -25,7 +28,7 @@
     <p class="actions">
       <button type="button" id="sample">Try it with sample data</button>
     </p>
-    <details>
+    <details class="help">
       <summary>Where do I get the files?</summary>
       <ul>
         <li><strong>UDisc:</strong> in the app, open <em>You</em>, the menu, then <em>Rounds</em>, the menu again, and choose <em>Export to CSV</em>. The scorecard export lists every round, including the players you played with.</li>
@@ -33,18 +36,22 @@
         <li>Newer exports can overlap older ones; duplicates are ignored.</li>
       </ul>
     </details>
-    <p id="status" role="status" aria-live="polite"></p>
-    <p id="error" role="alert"></p>
-  </section>
+  </details>
 
-  <section class="card" id="who-card" aria-labelledby="who-title" hidden>
-    <h2 id="who-title">2. Whose rounds?</h2>
+  <p id="status" role="status" aria-live="polite"></p>
+  <p id="error" role="alert"></p>
+
+  <details class="card" id="who-card" open hidden>
+    <summary>
+      <h2 id="who-title">2. Whose rounds?</h2>
+      <span class="sum" id="who-sum"></span>
+    </summary>
     <p class="card-sub">Scorecard exports include everyone you played with. The player with the most rounds is chosen first.</p>
     <p class="actions">
       <label for="who">Player</label>
       <select id="who"></select>
     </p>
-  </section>
+  </details>
 
   <section id="result" aria-label="Dashboard" hidden>
     <iframe id="dash" title="Your disc golf dashboard"></iframe>

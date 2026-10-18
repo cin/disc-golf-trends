@@ -123,7 +123,9 @@ browser tab, and the built page's content security policy stops the page from ma
 in TypeScript (a port of `udisc_data.py` and `techdisc_data.py`) and draws with the same `dashboard_template.html` as
 the Python dashboard, so there is one set of charts to maintain. A scorecard export includes everyone you played
 with; the page asks whose rounds to show and starts with the player who has the most. "Try it with sample data" loads
-made-up rounds and throws.
+made-up rounds and throws. The two setup cards (choose files, choose player) minimize to a one-line summary once you
+have picked, so the dashboard starts near the top; click a summary to change the choice, or drop new files on the
+picker even while it is minimized.
 
 Working on it needs Node.js 22.12 or newer (24 recommended); the Python parts do not need Node.
 

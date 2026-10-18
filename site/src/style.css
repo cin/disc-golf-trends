@@ -77,6 +77,17 @@ h2 { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
   margin-bottom: 16px;
 }
 .card[hidden], #result[hidden] { display: none; }
+.card > summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  align-items: baseline;
+  cursor: pointer;
+}
+.card > summary h2 { margin: 0; }
+.card[open] > summary { margin-bottom: 12px; }
+.sum { color: var(--text-secondary); font-size: 13px; overflow-wrap: anywhere; }
+.card[open] .sum { display: none; }
 
 .drop {
   display: flex;
@@ -90,6 +101,7 @@ h2 { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
   cursor: pointer;
 }
 .drop:hover, .drop.over { background: var(--neutral); border-color: var(--accent); }
+.card.over { border-color: var(--accent); }
 .drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
 .drop-title { font-weight: 600; }
@@ -112,13 +124,13 @@ select:focus-visible, button:focus-visible, a:focus-visible, summary:focus-visib
   outline-offset: 2px;
 }
 
-details { margin-top: 12px; color: var(--text-secondary); font-size: 14px; }
-summary { cursor: pointer; }
-details ul { margin: 8px 0 0; padding-left: 20px; }
+details.help { margin-top: 12px; color: var(--text-secondary); font-size: 14px; }
+.help summary { cursor: pointer; }
+.help ul { margin: 8px 0 0; padding-left: 20px; }
 a { color: var(--accent); }
 
-#status { color: var(--text-secondary); font-size: 14px; margin: 12px 0 0; }
-#error { color: var(--error); font-size: 14px; margin: 8px 0 0; white-space: pre-wrap; }
+#status { color: var(--text-secondary); font-size: 14px; margin: 0 0 16px; }
+#error { color: var(--error); font-size: 14px; margin: 0 0 16px; white-space: pre-wrap; }
 #status:empty, #error:empty { display: none; }
 
 #dash { display: block; width: 100%; height: 900px; border: 0; background: var(--page); }
